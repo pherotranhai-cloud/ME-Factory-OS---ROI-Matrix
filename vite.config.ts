@@ -3,13 +3,17 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, process.cwd(), '');
   return {
-    // QUAN TRỌNG: base: './' giúp các file assets (CSS/JS) load đúng đường dẫn trên Netlify
     base: './',
     plugins: [react()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // Bơm trực tiếp các biến môi trường vào React
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || ''),
+      'process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME': JSON.stringify(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || ''),
+      'process.env.CLOUDINARY_URL': JSON.stringify(process.env.CLOUDINARY_URL || env.CLOUDINARY_URL || ''),
+      // Thủ thuật an toàn: Nếu code gọi process.env.KHAC thì sẽ trả về undefined thay vì crash!
+      'process.env': {}
     },
     resolve: {
       alias: {
@@ -18,17 +22,11 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      assetsDir: 'assets',
-      sourcemap: false,
-      // Đảm bảo rollup không làm hỏng đường dẫn
       rollupOptions: {
         output: {
           manualChunks: undefined,
         },
       },
-    },
-    server: {
-      hmr: process.env.DISABLE_HMR !== 'true',
     },
   };
 });
