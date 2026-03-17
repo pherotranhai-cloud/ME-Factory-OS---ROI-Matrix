@@ -1377,8 +1377,8 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || 'djgai7h3b';
-    const uploadPreset = process.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
+    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+    const uploadPreset = 'ml_default';
 
     try {
       const uploadPromises = Array.from(files).map(async (file: File) => {
