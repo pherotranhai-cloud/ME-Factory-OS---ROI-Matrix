@@ -10,7 +10,7 @@ const seedData = [
     vendor: "ME-TECH",
     investment_cost: 15000,
     annual_savings: 8500,
-    payback_period_months: 21.2,
+    roi_months: 21.2,
     status: "Approved",
     tags: JSON.stringify(["ROI", "Stitching", "AIR-MAX-2026"])
   },
@@ -21,7 +21,7 @@ const seedData = [
     vendor: "LASER-PRO",
     investment_cost: 25000,
     annual_savings: 12000,
-    payback_period_months: 25.0,
+    roi_months: 25.0,
     status: "Implemented",
     tags: JSON.stringify(["ROI", "Cutting", "ZOOM-RUN-2026"])
   },
@@ -32,7 +32,7 @@ const seedData = [
     vendor: "HEAT-TECH",
     investment_cost: 8000,
     annual_savings: 3000,
-    payback_period_months: 32.0,
+    roi_months: 32.0,
     status: "Pending Approval",
     tags: JSON.stringify(["ROI", "Press", "FLEX-2026"])
   },
@@ -43,7 +43,7 @@ const seedData = [
     vendor: "MOLD-MASTER",
     investment_cost: 45000,
     annual_savings: 22000,
-    payback_period_months: 24.5,
+    roi_months: 24.5,
     status: "Approved",
     tags: JSON.stringify(["ROI", "Molding", "DURABLE-2026"])
   }
@@ -51,14 +51,14 @@ const seedData = [
 
 const insert = db.prepare(`
   INSERT OR IGNORE INTO roi_reports (
-    project_id, machine_name, shoe_model, vendor, investment_cost, annual_savings, payback_period_months, status, tags
+    project_id, machine_name, shoe_model, vendor, investment_cost, annual_savings, roi_months, status, tags
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 for (const data of seedData) {
   insert.run(
     data.project_id, data.machine_name, data.shoe_model, data.vendor,
-    data.investment_cost, data.annual_savings, data.payback_period_months,
+    data.investment_cost, data.annual_savings, data.roi_months,
     data.status, data.tags
   );
 }
