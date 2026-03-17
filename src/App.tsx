@@ -1372,38 +1372,32 @@ const InputField = ({ label, value, onChange, type = "number", suffix }: any) =>
 const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs: string[]) => void }) => {
   const [uploading, setUploading] = useState(false);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
     setUploading(true);
-    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dpxunp88i';
     const uploadPreset = 'ml_default';
 
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);   
+
     try {
-      const uploadPromises = Array.from(files).map(async (file: File) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset);
-
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || 'Upload failed');
-        }
-        const data = await response.json();
-        return data.secure_url;
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
       });
-
-      const urls = await Promise.all(uploadPromises);
-      setImages([...images, ...urls].slice(0, 3));
-    } catch (err: any) {
-      console.error("Cloudinary Upload Error:", err);
-      alert('Upload failed: ' + err.message);
+      const data = await res.json();
+      if (data.secure_url) {
+        setUploadedImages(prev => [...prev, data.secure_url]);
+      } else {
+        console.error("Upload Error Detail:", data);
+        alert("Upload failed: " + (data.error?.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Upload fetch error:", err);
     } finally {
       setUploading(false);
     }
