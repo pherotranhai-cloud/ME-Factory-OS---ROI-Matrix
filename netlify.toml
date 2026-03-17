@@ -5,12 +5,17 @@
 [functions]
   directory = "netlify/functions"
 
+# Cấu hình Redirect cho API Functions
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/server/:splat"
   status = 200
 
+# Cấu hình Redirect cho React Router (Tránh lỗi 404 khi F5 trang)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[context.production.environment]
+  NODE_VERSION = "20"
