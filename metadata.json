@@ -1,0 +1,8 @@
+{
+  "name": "ME Factory OS - ROI Matrix",
+  "description": "Industrial-grade ROI calculation and AI evaluation system for Manufacturing Excellence leadership.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

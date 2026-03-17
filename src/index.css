@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0a0a0a] text-[#e0e0e0] font-sans antialiased;
+  }
+}
+
+@layer components {
+  .factory-border {
+    @apply border border-[#333] border-solid;
+  }
+  .factory-bg {
+    @apply bg-[#141414];
+  }
+  .factory-input {
+    @apply bg-[#1a1a1a] border border-[#333] text-[#e0e0e0] px-3 py-2 focus:border-emerald-500 outline-none transition-colors font-mono text-sm;
+  }
+  .factory-label {
+    @apply text-[10px] uppercase tracking-wider text-[#888] font-bold mb-1 block;
+  }
+  .factory-btn {
+    @apply px-4 py-2 bg-[#222] border border-[#444] text-[#ccc] hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all uppercase text-xs font-bold tracking-widest disabled:opacity-50;
+  }
+  .factory-card {
+    @apply bg-[#111] border border-[#222] p-6;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
