@@ -1,32 +1,25 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, '.', '');
   return {
-    base: './',
     plugins: [react()],
     define: {
-      // Bơm trực tiếp các biến môi trường vào React
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || ''),
-      'process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME': JSON.stringify(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || ''),
-      'process.env.CLOUDINARY_URL': JSON.stringify(process.env.CLOUDINARY_URL || env.CLOUDINARY_URL || ''),
-      // Thủ thuật an toàn: Nếu code gọi process.env.KHAC thì sẽ trả về undefined thay vì crash!
-      'process.env': {}
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.VITE_CLOUDINARY_CLOUD_NAME': JSON.stringify(env.VITE_CLOUDINARY_CLOUD_NAME),
+      'process.env.VITE_CLOUDINARY_UPLOAD_PRESET': JSON.stringify(env.VITE_CLOUDINARY_UPLOAD_PRESET),
     },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    build: {
-      outDir: 'dist',
-      rollupOptions: {
-        output: {
-          manualChunks: undefined,
-        },
-      },
+    server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
     },
   };
 });

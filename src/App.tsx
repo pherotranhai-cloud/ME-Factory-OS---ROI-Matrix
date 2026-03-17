@@ -1377,27 +1377,32 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    const formData = new FormData();
-    Array.from(files).forEach(file => formData.append('images', file as Blob));
+    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || 'djgai7h3b';
+    const uploadPreset = process.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-      
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Non-JSON response from /api/upload:", text);
-        throw new Error('Server returned non-JSON response');
-      }
+      const uploadPromises = Array.from(files).map(async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', uploadPreset);
 
-      if (!response.ok) throw new Error('Upload failed');
-      const data = await response.json();
-      setImages([...images, ...data.urls].slice(0, 3));
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Upload failed');
+        }
+        const data = await response.json();
+        return data.secure_url;
+      });
+
+      const urls = await Promise.all(uploadPromises);
+      setImages([...images, ...urls].slice(0, 3));
     } catch (err: any) {
-      console.error(err);
+      console.error("Cloudinary Upload Error:", err);
       alert('Upload failed: ' + err.message);
     } finally {
       setUploading(false);
