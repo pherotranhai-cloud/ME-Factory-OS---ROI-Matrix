@@ -1,18 +1,20 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { Client } from "@neondatabase/serverless";
+import { Pool } from "@neondatabase/serverless";
 import { v2 as cloudinary } from "cloudinary";
 import serverless from "serverless-http";
 import { GoogleGenAI } from "@google/genai";
 
 // Database Connection
-let pgClient: Client | null = null;
+let pgPool: Pool | null = null;
 
-if (process.env.DATABASE_URL) {
-  pgClient = new Client(process.env.DATABASE_URL);
-  pgClient.connect().catch(err => console.error("NeonDB Connection Error:", err));
-}
+const getPool = () => {
+  if (!pgPool && process.env.DATABASE_URL) {
+    pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+  }
+  return pgPool;
+};
 
 // Cloudinary Config
 if (process.env.CLOUDINARY_URL) {
@@ -27,8 +29,9 @@ app.use(express.json());
 
 // Helper for DB queries
 const query = async (text: string, params: any[] = []) => {
-  if (pgClient) {
-    const res = await pgClient.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+  const pool = getPool();
+  if (pool) {
+    const res = await pool.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
     return res.rows;
   }
   throw new Error("Database not connected");

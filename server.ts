@@ -5,7 +5,7 @@ import path from "path";
 import fs from "fs";
 import cors from "cors";
 import Database from "better-sqlite3";
-import { Client } from "@neondatabase/serverless";
+import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import serverless from "serverless-http";
@@ -15,12 +15,16 @@ const isProd = process.env.NODE_ENV === "production" || process.env.DATABASE_URL
 
 // Database Connection
 let db: any;
-let pgClient: Client | null = null;
+let pgPool: Pool | null = null;
 
-if (isProd && process.env.DATABASE_URL) {
-  pgClient = new Client(process.env.DATABASE_URL);
-  pgClient.connect().catch(err => console.error("NeonDB Connection Error:", err));
-} else {
+const getPool = () => {
+  if (isProd && !pgPool && process.env.DATABASE_URL) {
+    pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+  }
+  return pgPool;
+};
+
+if (!isProd || !process.env.DATABASE_URL) {
   db = new Database("database.sqlite");
   // Initialize SQLite Database
   db.exec(`
@@ -67,7 +71,7 @@ if (isProd && process.env.DATABASE_URL) {
       other_savings REAL,
       annual_savings REAL,
       annual_output REAL,
-      payback_period_months REAL,
+      roi_months REAL,
       roi_percentage REAL,
       ai_verdict TEXT,
       status TEXT DEFAULT 'Draft',
@@ -118,8 +122,9 @@ async function startServer() {
 
   // Helper for DB queries
   const query = async (text: string, params: any[] = []) => {
-    if (pgClient) {
-      const res = await pgClient.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+    const pool = getPool();
+    if (pool) {
+      const res = await pool.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
       return res.rows;
     } else {
       const stmt = db.prepare(text);
@@ -214,7 +219,7 @@ async function startServer() {
         params.push(p, p, p, p);
       }
       q += " ORDER BY created_at DESC";
-      const reports = await query(q.replace(/ILIKE/g, pgClient ? "ILIKE" : "LIKE"), params);
+      const reports = await query(q.replace(/ILIKE/g, getPool() ? "ILIKE" : "LIKE"), params);
       res.json(reports.map((r: any) => ({
         ...r,
         tags: typeof r.tags === 'string' ? JSON.parse(r.tags || "[]") : r.tags
@@ -229,7 +234,7 @@ async function startServer() {
       const { 
         project_id, machine_name, shoe_model, vendor, investment_cost, 
         labor_saving_cost, energy_saving_cost, other_savings, 
-        annual_savings, annual_output, payback_period_months, roi_percentage, 
+        annual_savings, annual_output, roi_months, roi_percentage, 
         ai_verdict, status, tags 
       } = req.body;
 
@@ -237,13 +242,13 @@ async function startServer() {
         INSERT INTO roi_reports (
           project_id, machine_name, shoe_model, vendor, investment_cost, 
           labor_saving_cost, energy_saving_cost, other_savings, 
-          annual_savings, annual_output, payback_period_months, roi_percentage, 
+          annual_savings, annual_output, roi_months, roi_percentage, 
           ai_verdict, status, tags
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
       `, [
         project_id, machine_name, shoe_model, vendor, investment_cost,
         labor_saving_cost, energy_saving_cost, other_savings,
-        annual_savings, annual_output, payback_period_months, roi_percentage,
+        annual_savings, annual_output, roi_months, roi_percentage,
         ai_verdict, status || 'Draft', JSON.stringify(tags || [])
       ]);
 
@@ -292,7 +297,7 @@ async function startServer() {
           SUM(investment_cost) as total_investment,
           SUM(annual_savings) as total_savings,
           SUM(annual_output) as total_output,
-          AVG(payback_period_months) as avg_payback
+          AVG(roi_months) as avg_roi
         FROM roi_reports
         WHERE status IN ('Approved', 'Implemented')
       `);
@@ -311,7 +316,7 @@ async function startServer() {
           totalInvestment: Number(stats.total_investment) || 0,
           totalSavings: Number(stats.total_savings) || 0,
           totalOutput: Number(stats.total_output) || 0,
-          avg_payback: Number(stats.avg_payback) || 0
+          avg_roi: Number(stats.avg_roi) || 0
         },
         statusDistribution: distribution,
         comparisonData: comparison

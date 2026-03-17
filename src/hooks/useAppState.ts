@@ -10,7 +10,7 @@ export const INITIAL_PARAMS: ROIParams = {
   brand: '',
   scopeOfWork: '',
   machineQuantity: 1,
-  powerSupplyV: 380,
+  powerSupplyV: '380',
   powerConsumptionKW: 0,
   speedSPrs: 0,
   unitPrice: 0,
