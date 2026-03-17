@@ -108,7 +108,7 @@ const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { reportId:
 };
 
 const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<any>({});
   const [history, setHistory] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -120,15 +120,34 @@ const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
     setIsLoading(true);
     try {
       const [statsRes, historyRes, reportsRes] = await Promise.all([
-        fetch('/api/dashboard-stats'),
-        fetch('/api/report-history'),
-        fetch('/api/roi-reports')
+        fetch('/api/dashboard-stats').catch(() => null),
+        fetch('/api/report-history').catch(() => null),
+        fetch('/api/roi-reports').catch(() => null)
       ]);
-      setStats(await statsRes.json());
-      setHistory(await historyRes.json());
-      setReports(await reportsRes.json());
+
+      // Safely parse JSON or return fallback values if it's HTML/Error
+      const safeJson = async (res: Response | null, fallback: any) => {
+        if (!res || !res.ok) return fallback;
+        try {
+          return await res.json();
+        } catch (e) {
+          return fallback;
+        }
+      };
+
+      const statsData = await safeJson(statsRes, {});
+      const historyData = await safeJson(historyRes, []);
+      const reportsData = await safeJson(reportsRes, []);
+
+      setStats(statsData || {});
+      setHistory(Array.isArray(historyData) ? historyData : []);
+      setReports(Array.isArray(reportsData) ? reportsData : []);
     } catch (err) {
-      console.error(err);
+      console.error("Dashboard Fetch Error:", err);
+      // Fallback to empty states to prevent crashing
+      setStats({});
+      setHistory([]);
+      setReports([]);
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +161,7 @@ const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
         setDeleteConfirm(null);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Delete Error:", err);
     }
   };
 
@@ -150,14 +169,15 @@ const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
     fetchDashboardData();
   }, []);
 
-  const filteredReports = reports.filter(r => {
+  // Use Optional Chaining (?.) and empty array fallback to prevent map/filter crashes
+  const filteredReports = (reports || []).filter(r => {
     const matchesSearch = 
-      r.machine_name?.toLowerCase().includes(search.toLowerCase()) ||
-      r.project_id?.toLowerCase().includes(search.toLowerCase()) ||
-      r.vendor?.toLowerCase().includes(search.toLowerCase()) ||
-      r.shoe_model?.toLowerCase().includes(search.toLowerCase());
+      r?.machine_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r?.project_id?.toLowerCase().includes(search.toLowerCase()) ||
+      r?.vendor?.toLowerCase().includes(search.toLowerCase()) ||
+      r?.shoe_model?.toLowerCase().includes(search.toLowerCase());
     
-    const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' || r?.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -179,7 +199,6 @@ const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
             <div className="p-2 bg-emerald-500/10 rounded-lg">
               <DollarSign className="text-emerald-500" size={20} />
             </div>
-            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">+12.5%</span>
           </div>
           <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Approved Investment</h3>
           <p className="text-2xl font-mono font-bold text-white">${(stats?.topStats?.totalInvestment || 0).toLocaleString()}</p>
@@ -187,246 +206,208 @@ const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
 
         <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <TrendingUp className="text-blue-500" size={20} />
+            <div className="p-2 bg-emerald-500/10 rounded-lg">
+              <TrendingUp className="text-emerald-500" size={20} />
             </div>
-            <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-1 rounded">+8.2%</span>
           </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">FOB Cost Impact</h3>
-          <p className="text-2xl font-mono font-bold text-white">
-            ${(stats?.topStats?.totalOutput || 0) > 0 ? ((stats?.topStats?.totalSavings || 0) / stats.topStats!.totalOutput).toFixed(3) : '0.000'}
-          </p>
+          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Global FOB Impact</h3>
+          <p className="text-2xl font-mono font-bold text-emerald-500">-${(stats?.topStats?.totalFOBSavings || 0).toFixed(4)} <span className="text-sm">/prs</span></p>
         </div>
 
         <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-amber-500/10 rounded-lg">
-              <Activity className="text-amber-500" size={20} />
+              <Clock className="text-amber-500" size={20} />
             </div>
           </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Active Projects</h3>
-          <p className="text-2xl font-mono font-bold text-white">{reports.length}</p>
+          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Average ROI</h3>
+          <p className="text-2xl font-mono font-bold text-white">{(stats?.topStats?.avgROI || 0).toFixed(1)} <span className="text-sm">Months</span></p>
         </div>
 
         <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <CheckCircle2 className="text-purple-500" size={20} />
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <Activity className="text-blue-500" size={20} />
             </div>
           </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Average ROI (Months)</h3>
-          <p className="text-2xl font-mono font-bold text-white">
-            {stats?.topStats?.avg_payback ? stats.topStats.avg_payback.toFixed(1) : '0.0'}
-          </p>
+          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Active Projects</h3>
+          <p className="text-2xl font-mono font-bold text-white">{stats?.topStats?.activeProjects || 0}</p>
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-          <div className="flex items-center gap-2 mb-6">
-            <BarChart3 size={18} className="text-emerald-500" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Investment vs Savings</h3>
-          </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.comparisonData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="machine_name" stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
-                <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '8px' }}
-                  itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '20px' }} />
-                <Bar dataKey="investment_cost" name="Investment" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="annual_savings" name="Annual Savings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column: Charts */}
+        <div className="lg:col-span-2 space-y-8">
+          <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
+            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+              <BarChart3 size={16} className="text-zinc-400" />
+              Investment vs FOB Impact
+            </h3>
+            {stats?.comparisonData && stats.comparisonData.length > 0 ? (
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.comparisonData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                    <XAxis dataKey="machine_name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="left" orientation="left" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                      itemStyle={{ color: '#e4e4e7' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar yAxisId="left" dataKey="investment" name="Investment ($)" fill="#3f3f46" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="fob_impact" name="FOB Impact ($/prs)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data Available</div>
+            )}
           </div>
         </div>
 
-        <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-          <div className="flex items-center gap-2 mb-6">
-            <PieChartIcon size={18} className="text-emerald-500" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Project Status Distribution</h3>
-          </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={stats?.statusDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="count"
-                  nameKey="status"
-                >
-                  {stats?.statusDistribution.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '8px' }}
-                  itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
-                />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Right Column: Status Pie & History */}
+        <div className="space-y-8">
+          <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
+            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+              <PieChartIcon size={16} className="text-zinc-400" />
+              Project Status
+            </h3>
+            {stats?.statusDistribution && stats.statusDistribution.length > 0 ? (
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.statusDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {stats.statusDistribution.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data Available</div>
+            )}
+            <div className="flex flex-wrap gap-3 mt-4 justify-center">
+              {stats?.statusDistribution?.map((s: any, i: number) => (
+                <div key={s.name} className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                  {s.name} ({s.value})
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Search & Table */}
-      <div className="factory-border bg-zinc-900/50 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-zinc-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Activity size={18} className="text-emerald-500" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Project Tracker</h3>
-          </div>
-          <div className="flex flex-col md:flex-row gap-4 flex-1 max-w-2xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+      {/* Projects Table */}
+      <div className="factory-border bg-zinc-900/50 rounded-xl overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+            <FilePlus size={16} className="text-zinc-400" />
+            CAPEX Projects
+          </h3>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
               <input 
-                type="text"
-                placeholder="Search by ID, Machine, Model, or Vendor..."
+                type="text" 
+                placeholder="Search projects..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-10 pr-4 py-2 text-xs font-bold text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
               />
             </div>
-            <div className="relative w-full md:w-48">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold text-white appearance-none focus:outline-none focus:border-emerald-500 transition-colors uppercase tracking-widest"
-              >
-                <option value="All">All Status</option>
-                <option value="Draft">Draft</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Implemented">Implemented</option>
-                <option value="Dropped">Dropped</option>
-              </select>
-            </div>
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-zinc-300 focus:outline-none focus:border-emerald-500 transition-colors"
+            >
+              <option value="All">All Status</option>
+              <option value="Draft">Draft</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Implemented">Implemented</option>
+              <option value="Dropped">Dropped</option>
+            </select>
           </div>
         </div>
+        
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-950/50">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Project ID</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Machine / Model</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Investment</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">ROI (Months)</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">% Diff</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Project ID / Machine</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Investment</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">FOB Impact</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">ROI</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {filteredReports.map((report) => (
-                <tr key={report.id} className="hover:bg-zinc-800/30 transition-colors group">
+            <tbody>
+              {filteredReports.map((r) => (
+                <tr key={r.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors group">
                   <td className="px-6 py-4">
-                    <span className="font-mono text-[10px] font-bold text-emerald-500">{report.project_id}</span>
+                    <div className="font-bold text-sm text-zinc-200">{r.machine_name}</div>
+                    <div className="text-[10px] text-zinc-500 mt-1 font-mono">{r.project_id || `REQ-${r.id}`} • {r.shoe_model}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-col max-w-[200px]">
-                      <span className="text-xs font-bold text-zinc-200 truncate" title={report.machine_name}>{report.machine_name}</span>
-                      <span className="text-[10px] text-zinc-500 truncate">{report.shoe_model || report.vendor}</span>
-                    </div>
+                    <StatusChangeDropdown reportId={r.id} currentStatus={r.status || 'Draft'} onUpdate={fetchDashboardData} />
+                  </td>
+                  <td className="px-6 py-4 font-mono text-sm text-zinc-300">
+                    ${(r.investment_cost || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs font-mono font-bold text-zinc-300">${report.investment_cost.toLocaleString()}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs font-mono font-bold text-zinc-300">{safeFixed(report.payback_period_months, 1)}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "text-xs font-mono font-bold",
-                      report.roi_percentage > 0 ? "text-emerald-500" : "text-red-500"
-                    )}>
-                      {report.roi_percentage > 0 ? '+' : ''}{safeFixed(report.roi_percentage, 1)}%
+                    <span className="font-mono text-sm text-emerald-500 font-bold">
+                      -${(r.fob_impact || 0).toFixed(4)}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <StatusChangeDropdown 
-                      reportId={report.id} 
-                      currentStatus={report.status} 
-                      onUpdate={() => fetchDashboardData()} 
-                    />
+                  <td className="px-6 py-4 font-mono text-sm text-amber-500">
+                    {r.roi_months || r.payback_period} mo
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {deleteConfirm === report.id ? (
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleDelete(report.id)}
-                            className="text-[10px] font-bold text-red-500 hover:text-red-400 uppercase tracking-tighter"
-                          >
-                            Confirm
-                          </button>
-                          <button 
-                            onClick={() => setDeleteConfirm(null)}
-                            className="text-[10px] font-bold text-zinc-500 hover:text-zinc-400 uppercase tracking-tighter"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => setDeleteConfirm(report.id)}
-                          className="p-1.5 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
-                          title="Delete Project"
-                        >
-                          <Trash2 size={14} />
+                  <td className="px-6 py-4 text-right relative">
+                    {deleteConfirm === r.id ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-[10px] text-red-400 font-bold uppercase">Sure?</span>
+                        <button onClick={() => handleDelete(r.id)} className="p-1.5 bg-red-500/20 text-red-500 rounded hover:bg-red-500 hover:text-white transition-colors">
+                          <CheckCircle2 size={14} />
                         </button>
-                      )}
-                    </div>
+                        <button onClick={() => setDeleteConfirm(null)} className="p-1.5 bg-zinc-800 text-zinc-400 rounded hover:text-white transition-colors">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
+              {filteredReports.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 text-sm font-bold uppercase tracking-widest">
+                    No projects found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Recent History */}
-      <div className="factory-border bg-zinc-900/50 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-zinc-800">
-          <div className="flex items-center gap-2">
-            <Clock size={18} className="text-emerald-500" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Recent Activity Logs</h3>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {history.map((log) => (
-              <div key={log.id} className="flex items-start gap-4 p-4 bg-zinc-950/50 rounded-lg border border-zinc-800">
-                <div className="p-2 bg-zinc-800 rounded-full">
-                  <Activity size={14} className="text-emerald-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-xs font-bold text-zinc-200">
-                      {log.changed_by} changed status of <span className="text-emerald-500">{log.project_id}</span>
-                    </p>
-                    <span className="text-[10px] font-bold text-zinc-500">{new Date(log.created_at).toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <StatusBadge status={log.status_from} />
-                    <ChevronRight size={12} className="text-zinc-600" />
-                    <StatusBadge status={log.status_to} />
-                  </div>
-                  {log.comment && <p className="text-[10px] text-zinc-500 italic">"{log.comment}"</p>}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -459,10 +440,10 @@ const TRANSLATIONS: Record<Language, any> = {
     prev: "Previous",
     next: "Next",
     annualSavings: "Cost per Pair Reduction",
-    payback: "ROI (Months)",
+    roi: "ROI (Months)",
     months: "MONTHS",
     metric: "Metric",
-    delta: "Delta",
+    diff: "Diff",
     aiEvaluator: "AI Objective Evaluator",
     runAnalysis: "Run AI Analysis",
     regenerate: "Regenerate AI Review",
@@ -534,10 +515,10 @@ const TRANSLATIONS: Record<Language, any> = {
     prev: "Trước",
     next: "Tiếp theo",
     annualSavings: "Giảm chi phí trên mỗi đôi",
-    payback: "ROI (Tháng)",
+    roi: "ROI (Tháng)",
     months: "THÁNG",
     metric: "Chỉ số",
-    delta: "Chênh lệch",
+    diff: "Chênh lệch",
     aiEvaluator: "Đánh giá khách quan AI",
     runAnalysis: "Chạy phân tích AI",
     regenerate: "Tạo lại đánh giá AI",
@@ -609,10 +590,10 @@ const TRANSLATIONS: Record<Language, any> = {
     prev: "上一步",
     next: "下一步",
     annualSavings: "年度总节省",
-    payback: "投资回收期",
+    roi: "投资回报期 (月)",
     months: "月",
     metric: "指标",
-    delta: "差异",
+    diff: "差异",
     aiEvaluator: "AI 客观评估器",
     runAnalysis: "运行 AI 分析",
     regenerate: "重新生成 AI 评论",
@@ -681,10 +662,10 @@ const TRANSLATIONS: Record<Language, any> = {
     prev: "上一步",
     next: "下一步",
     annualSavings: "年度總節省",
-    payback: "投資回收期",
+    roi: "投資回收期 (月)",
     months: "月",
     metric: "指標",
-    delta: "差異",
+    diff: "差異",
     aiEvaluator: "AI 客觀評估器",
     runAnalysis: "運行 AI 分析",
     regenerate: "重新生成 AI 評論",
@@ -753,10 +734,10 @@ const TRANSLATIONS: Record<Language, any> = {
     prev: "Sebelumnya",
     next: "Berikutnya",
     annualSavings: "Total Penghematan Tahunan",
-    payback: "Periode Pengembalian",
+    roi: "Periode ROI (Bulan)",
     months: "BULAN",
     metric: "Metrik",
-    delta: "Delta",
+    diff: "Diff",
     aiEvaluator: "Evaluator Objektif AI",
     runAnalysis: "Jalankan Analisis AI",
     regenerate: "Buat Ulang Tinjauan AI",
@@ -825,10 +806,10 @@ const TRANSLATIONS: Record<Language, any> = {
     prev: "Sebelumnya",
     next: "Seterusnya",
     annualSavings: "Jumlah Simpanan Tahunan",
-    payback: "Tempoh Bayar Balik",
+    roi: "Tempoh ROI (Bulan)",
     months: "BULAN",
     metric: "Metrik",
-    delta: "Delta",
+    diff: "Diff",
     aiEvaluator: "Penilai Objektif AI",
     runAnalysis: "Jalankan Analisis AI",
     regenerate: "Jana Semula Semakan AI",
@@ -932,7 +913,6 @@ interface ROIResults {
     annualConsumables: number;
     annualDepreciation: number;
     totalAnnualCost: number;
-    operatingCostPerPair: number;
     costPerPair: number;
   };
   machine: {
@@ -946,7 +926,6 @@ interface ROIResults {
     annualConsumables: number;
     annualDepreciation: number;
     totalAnnualCost: number;
-    operatingCostPerPair: number;
     costPerPair: number;
   };
   savings: {
@@ -959,7 +938,7 @@ interface ROIResults {
     totalAnnualSaving: number;
     fobImpact: number;
   };
-  paybackPeriodMonths: number;
+  roiMonths: number;
 }
 
 // --- Components ---
@@ -1042,7 +1021,7 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
   };
 
   return (
-    <div id="capex-template" className="bg-white p-[20px] text-black font-sans overflow-hidden" style={{ width: '210mm', minHeight: '297mm', display: 'flex', flexDirection: 'column' }}>
+    <div id="capex-template" className="bg-white p-[40px] text-black overflow-hidden" style={{ width: '794px', minHeight: '1123px', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif' }}>
       {/* Header */}
       <div className="border-b-4 border-emerald-600 pb-6 mb-8 flex justify-between items-end">
         <div>
@@ -1061,7 +1040,7 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
       {/* Section 1: Machine Info & Photo - CSS Grid Fix */}
       <div className="grid grid-cols-2 gap-6 mb-10" style={{ pageBreakInside: 'avoid' }}>
         <div className="overflow-hidden">
-          <h2 className="text-[11px] font-black uppercase bg-zinc-800 text-white px-3 py-2 mb-4 tracking-widest">{t.generalInfo}</h2>
+          <h2 className="text-[11px] font-black uppercase text-white px-3 py-2 mb-4 tracking-widest" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{t.generalInfo}</h2>
           <table className="w-full text-[11px] border-collapse">
             <tbody>
               <tr className="border-b border-zinc-200">
@@ -1112,21 +1091,21 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
 
       {/* Section 2: Logic & Data Table */}
       <div className="mb-10" style={{ pageBreakInside: 'avoid' }}>
-        <h2 className="text-[11px] font-black uppercase bg-zinc-800 text-white px-3 py-2 mb-4 tracking-widest">{t.prodData}</h2>
+        <h2 className="text-[11px] font-black uppercase text-white px-3 py-2 mb-4 tracking-widest" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{t.prodData}</h2>
         <table className="w-full text-[11px] border-collapse border-2 border-zinc-800" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr className="bg-zinc-100">
               <th className="border border-zinc-300 p-3 text-left font-black uppercase tracking-tighter text-zinc-600" style={{ width: '40%', wordBreak: 'break-word', verticalAlign: 'middle' }}>{t.metricName}</th>
               <th className="border border-zinc-300 p-3 text-right font-black uppercase tracking-tighter text-zinc-600" style={{ width: '20%', wordBreak: 'break-word', verticalAlign: 'middle', paddingRight: '5px' }}>{t.manual}</th>
               <th className="border border-zinc-300 p-3 text-right font-black uppercase tracking-tighter text-zinc-600" style={{ width: '20%', wordBreak: 'break-word', verticalAlign: 'middle', paddingRight: '5px' }}>{t.machine}</th>
-              <th className="border border-zinc-300 p-3 text-right font-black uppercase tracking-tighter text-zinc-600" style={{ width: '10%', wordBreak: 'break-word', verticalAlign: 'middle', paddingRight: '5px' }}>{t.delta}</th>
+              <th className="border border-zinc-300 p-3 text-right font-black uppercase tracking-tighter text-zinc-600" style={{ width: '10%', wordBreak: 'break-word', verticalAlign: 'middle', paddingRight: '5px' }}>{t.diff}</th>
               <th className="border border-zinc-300 p-3 text-right font-black uppercase tracking-tighter text-zinc-600" style={{ width: '10%', wordBreak: 'break-word', verticalAlign: 'middle', paddingRight: '5px' }}>% Diff</th>
             </tr>
           </thead>
           <tbody>
             {/* Production */}
-            <tr className="bg-zinc-50/50">
-              <td colSpan={5} className="border border-zinc-300 p-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">{t.production}</td>
+            <tr style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+              <td colSpan={5} className="border border-zinc-300 p-2 text-[10px] font-black uppercase tracking-widest">{t.production}</td>
             </tr>
             <tr>
               <td className="border border-zinc-300 p-3 font-medium pl-6" style={{ wordBreak: 'break-word', verticalAlign: 'middle' }}>{t.capacityHour}</td>
@@ -1157,8 +1136,8 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
               <td className="border border-zinc-300 p-3 text-right font-mono font-bold text-emerald-600" style={{ paddingRight: '5px', verticalAlign: 'middle' }}>+{sf(((results.machine.actualGoodCapacity / results.manual.actualGoodCapacity - 1) * 100), 1)}%</td>
             </tr>
             {/* Costs */}
-            <tr className="bg-zinc-50/50">
-              <td colSpan={5} className="border border-zinc-300 p-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">{t.consumptionCost}</td>
+            <tr style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+              <td colSpan={5} className="border border-zinc-300 p-2 text-[10px] font-black uppercase tracking-widest">{t.consumptionCost}</td>
             </tr>
             <tr>
               <td className="border border-zinc-300 p-3 font-medium pl-6" style={{ wordBreak: 'break-word', verticalAlign: 'middle' }}>{t.manpowerDemand}</td>
@@ -1202,8 +1181,8 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
               <td className="border border-zinc-300 p-3 text-right font-mono font-bold text-emerald-600" style={{ paddingRight: '5px', verticalAlign: 'middle' }}>${sf((params.proposedMaterialCost - params.currentMaterialCost), 3)}</td>
               <td className="border border-zinc-300 p-3 text-right font-mono font-bold text-emerald-600" style={{ paddingRight: '5px', verticalAlign: 'middle' }}>{sf(((params.proposedMaterialCost / params.currentMaterialCost - 1) * 100), 1)}%</td>
             </tr>
-            <tr className="bg-zinc-50/50">
-              <td colSpan={5} className="border border-zinc-300 p-2 text-[10px] font-black uppercase tracking-widest text-blue-700">Unit Cost Impact</td>
+            <tr style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
+              <td colSpan={5} className="border border-zinc-300 p-2 text-[10px] font-black uppercase tracking-widest">Unit Cost Impact</td>
             </tr>
             <tr>
               <td className="border border-zinc-300 p-3 font-medium pl-6" style={{ wordBreak: 'break-word', verticalAlign: 'middle' }}>{t.operatingCostPerPair}</td>
@@ -1233,13 +1212,13 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
       {/* Dual Highlights: ROI & FOB Impact */}
       <div className="grid grid-cols-2 gap-6 mb-10" style={{ pageBreakInside: 'avoid' }}>
         <div className="border-2 border-emerald-600 rounded-xl p-8 bg-emerald-50/50 flex flex-col items-center justify-center shadow-sm">
-          <span className="text-[10px] font-black uppercase text-emerald-700 mb-3 tracking-[0.2em]">{t.payback}</span>
+          <span className="text-[10px] font-black uppercase text-emerald-700 mb-3 tracking-[0.2em]">{t.roi}</span>
           <div className="text-5xl font-mono font-black text-emerald-800 tracking-tighter">
-            {sf(results.paybackPeriodMonths, 1)}
+            {sf(results.roiMonths, 1)}
             <span className="text-base ml-1 uppercase">{t.months}</span>
           </div>
           <div className="mt-4 px-4 py-1.5 bg-emerald-600 text-white text-[9px] font-black rounded-full uppercase tracking-widest">
-            {results.paybackPeriodMonths <= 18 ? 'High Priority' : 'Standard ROI'}
+            {results.roiMonths <= 18 ? 'High Priority' : 'Standard ROI'}
           </div>
         </div>
         <div className="border-2 border-blue-600 rounded-xl p-8 bg-blue-50/50 flex flex-col items-center justify-center shadow-sm">
@@ -1255,7 +1234,7 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
 
       {/* Section 3: Verdict */}
       <div className="mb-10" style={{ pageBreakBefore: 'always' }}>
-        <h2 className="text-[11px] font-black uppercase bg-zinc-800 text-white px-3 py-2 mb-4 tracking-widest">{t.investmentVerdict}</h2>
+        <h2 className="text-[11px] font-black uppercase text-white px-3 py-2 mb-4 tracking-widest" style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>{t.investmentVerdict}</h2>
         {aiEvaluation ? (
           <div className="border-2 border-zinc-200 rounded-xl p-6 bg-zinc-50/30">
             <div className="flex items-center gap-3 mb-4">
@@ -1278,7 +1257,7 @@ const CAPEXReportTemplate = ({ params, results, aiEvaluation, t, uploadedImages,
                   {t.pros}
                 </h3>
                 <ul className="text-[10px] text-zinc-600 space-y-2">
-                  {aiEvaluation.pros.map((p: string, i: number) => (
+                  {aiEvaluation.pros?.map((p: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="text-emerald-500 font-bold mt-[-2px]">•</span>
                       <span>{p}</span>
@@ -1433,7 +1412,7 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
     <div className="space-y-4">
       <label className="factory-label">Machine Photos (Max 3)</label>
       <div className="grid grid-cols-3 gap-2">
-        {images.map((url, i) => (
+        {images?.map((url, i) => (
           <div key={i} className="relative aspect-square factory-border overflow-hidden group">
             <img src={url} alt="Upload" className="w-full h-full object-cover" />
             <button 
@@ -1526,11 +1505,11 @@ export default function App() {
     const manualAnnualConsumables = 0;
     const manualAnnualDepreciation = 0;
 
-    const manualAnnualOpEx = manualAnnualLabor + manualAnnualEnergy + manualAnnualMaintenance + manualAnnualConsumables + manualAnnualDepreciation;
-    const manualOperatingCost = manualActualGood > 0 ? manualAnnualOpEx / manualActualGood : 0;
-    const manualCostPerPair = manualOperatingCost + p.currentMaterialCost;
+    // Total Annual Cost = Labor + Maintenance + Consumables + Energy + Depreciation
+    const manualTotalAnnualCost = manualAnnualLabor + manualAnnualEnergy + manualAnnualMaintenance + manualAnnualConsumables + manualAnnualDepreciation;
+    // Cost per Pair = Total Annual Cost / Total Annual Output
+    const manualCostPerPair = manualActualGood > 0 ? manualTotalAnnualCost / manualActualGood : 0;
     const manualAnnualMaterial = manualActualGood * p.currentMaterialCost;
-    const manualTotalAnnualCost = manualAnnualOpEx + manualAnnualMaterial;
 
     // Machine Calculations
     const machineAnnualCapacity = p.machineCapacityPerHour * p.machineQuantity * HOURS_PER_YEAR;
@@ -1541,13 +1520,13 @@ export default function App() {
     const machineAnnualConsumables = p.consumablesCostPerYear * p.machineQuantity;
     const machineAnnualDepreciation = p.depreciationYears > 0 ? (p.unitPrice * p.machineQuantity) / p.depreciationYears : 0;
     
-    const machineAnnualOpEx = machineAnnualLabor + machineAnnualEnergy + machineAnnualMaintenance + machineAnnualConsumables + machineAnnualDepreciation;
-    const machineOperatingCost = machineActualGood > 0 ? machineAnnualOpEx / machineActualGood : 0;
-    const machineCostPerPair = machineOperatingCost + p.proposedMaterialCost;
+    // Total Annual Cost = Labor + Maintenance + Consumables + Energy + Depreciation
+    const machineTotalAnnualCost = machineAnnualLabor + machineAnnualEnergy + machineAnnualMaintenance + machineAnnualConsumables + machineAnnualDepreciation;
+    // Cost per Pair = Total Annual Cost / Total Annual Output
+    const machineCostPerPair = machineActualGood > 0 ? machineTotalAnnualCost / machineActualGood : 0;
     const machineAnnualMaterial = machineActualGood * p.proposedMaterialCost;
-    const machineTotalAnnualCost = machineAnnualOpEx + machineAnnualMaterial;
 
-    // Manpower Saving for SAME OUTPUT (Target = Machine Capacity)
+    // Savings for SAME OUTPUT (Target = Machine Capacity)
     const manualWorkersNeededForMachineOutput = (p.machineCapacityPerHour / p.manualCapacityPerHour) * p.manualManpower * p.machineQuantity;
     const manpowerSaving = manualWorkersNeededForMachineOutput - (p.machineManpower * p.machineQuantity);
     const laborSaving = manpowerSaving * p.localLaborCost * 12;
@@ -1561,9 +1540,10 @@ export default function App() {
     const maintenanceSaving = manualAnnualMaintenance - machineAnnualMaintenance;
     const consumablesSaving = manualAnnualConsumables - machineAnnualConsumables;
     
+    // FOB Impact is the improvement in operating cost per pair
     const fobImpact = manualCostPerPair - machineCostPerPair;
     const totalAnnualSaving = fobImpact * machineActualGood;
-    const paybackPeriodMonths = totalAnnualSaving > 0 ? ((p.unitPrice * p.machineQuantity) / (totalAnnualSaving / 12)) : Infinity;
+    const roiMonths = totalAnnualSaving > 0 ? ((p.unitPrice * p.machineQuantity) / (totalAnnualSaving / 12)) : Infinity;
 
     return {
       manual: {
@@ -1577,7 +1557,6 @@ export default function App() {
         annualConsumables: manualAnnualConsumables,
         annualDepreciation: manualAnnualDepreciation,
         totalAnnualCost: manualTotalAnnualCost,
-        operatingCostPerPair: manualOperatingCost,
         costPerPair: manualCostPerPair
       },
       machine: {
@@ -1591,7 +1570,6 @@ export default function App() {
         annualConsumables: machineAnnualConsumables,
         annualDepreciation: machineAnnualDepreciation,
         totalAnnualCost: machineTotalAnnualCost,
-        operatingCostPerPair: machineOperatingCost,
         costPerPair: machineCostPerPair
       },
       savings: {
@@ -1604,7 +1582,7 @@ export default function App() {
         totalAnnualSaving,
         fobImpact
       },
-      paybackPeriodMonths
+      roiMonths
     };
   };
 
@@ -1648,7 +1626,7 @@ export default function App() {
           energy_saving_cost: advancedResults?.savings.energySaving,
           other_savings: (advancedResults?.savings.materialSaving || 0) + (advancedResults?.savings.maintenanceSaving || 0) + (advancedResults?.savings.consumablesSaving || 0),
           annual_savings: advancedResults?.savings.totalAnnualSaving,
-          payback_period_months: advancedResults?.paybackPeriodMonths,
+          roi_months: advancedResults?.roiMonths,
           roi_percentage: (advancedResults?.savings.totalAnnualSaving / params.unitPrice) * 100,
           ai_verdict: aiEvaluation?.verdict,
           status: 'Draft',
@@ -1681,7 +1659,7 @@ export default function App() {
         Params: ${JSON.stringify(params)}
         Calculated Results: ${JSON.stringify(advancedResults)}
 
-        Ensure technical terms like "Manpower demand", "Defective rate", and "Payback period" are translated with industry-standard accuracy for ${lang}.
+        Ensure technical terms like "Manpower demand", "Defective rate", and "ROI period" are translated with industry-standard accuracy for ${lang}.
         
         Provide a structured evaluation in JSON format with:
         - pros: array of 3-4 strings (financial/technical gains)
@@ -1983,9 +1961,9 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="factory-card flex flex-col justify-between border-emerald-500 bg-emerald-950/20">
                           <div>
-                            <span className="factory-label text-emerald-400">{t.payback}</span>
+                            <span className="factory-label text-emerald-400">{t.roi}</span>
                             <div className="text-3xl font-mono font-black text-emerald-400 mt-1">
-                              {safeFixed(advancedResults.paybackPeriodMonths, 1)}
+                              {safeFixed(advancedResults.roiMonths, 1)}
                               <span className="text-sm ml-1 uppercase">{t.months}</span>
                             </div>
                           </div>
@@ -2032,7 +2010,7 @@ export default function App() {
                               <th className="p-3 text-[9px] font-bold uppercase tracking-widest text-zinc-500">{t.metric}</th>
                               <th className="p-3 text-[9px] font-bold uppercase tracking-widest text-zinc-500">{t.manual}</th>
                               <th className="p-3 text-[9px] font-bold uppercase tracking-widest text-zinc-500">{t.machine}</th>
-                              <th className="p-3 text-[9px] font-bold uppercase tracking-widest text-zinc-500">{t.delta} / %</th>
+                              <th className="p-3 text-[9px] font-bold uppercase tracking-widest text-zinc-500">{t.diff} / %</th>
                             </tr>
                           </thead>
                           <tbody className="font-mono text-[11px]">
@@ -2171,7 +2149,7 @@ export default function App() {
                             Equipment Visuals
                           </h3>
                           <div className="grid grid-cols-3 gap-4">
-                            {uploadedImages.map((url, i) => (
+                            {uploadedImages?.map((url, i) => (
                               <div key={i} className="aspect-video factory-border overflow-hidden bg-black">
                                 <img src={url} alt="Machine" className="w-full h-full object-contain" />
                               </div>
@@ -2214,7 +2192,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {reports.map((report) => (
+                    {Array.isArray(reports) && reports.map((report) => (
                       <div key={report.id} className="factory-card group hover:border-zinc-500 transition-all">
                         <div className="flex justify-between items-start">
                           <div>
@@ -2246,8 +2224,8 @@ export default function App() {
                             <span className="text-emerald-500">{safeFixed(report.results?.roiPercentage, 1)}%</span>
                           </div>
                           <div className="p-2 bg-zinc-900 rounded border border-zinc-800">
-                            <span className="text-zinc-500 block mb-1">Payback</span>
-                            <span className="text-amber-500">{safeFixed(report.results?.paybackPeriodMonths, 1)} Mo</span>
+                            <span className="text-zinc-500 block mb-1">{t.roi}</span>
+                            <span className="text-amber-500">{safeFixed(report.results?.roiMonths, 1)} Mo</span>
                           </div>
                           <div className="p-2 bg-zinc-900 rounded border border-zinc-800">
                             <span className="text-zinc-500 block mb-1">Annual Saving</span>
