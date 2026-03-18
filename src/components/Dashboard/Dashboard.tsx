@@ -219,111 +219,92 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Top Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <DollarSign className="text-emerald-500" size={20} />
+        {[
+          { label: 'Total Approved Investment', value: `$${(stats?.topStats?.totalInvestment || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, icon: DollarSign, color: 'emerald' },
+          { label: 'Global FOB Impact', value: `-$${(stats?.topStats?.totalFOBSavings || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}`, icon: TrendingUp, color: 'emerald' },
+          { label: 'Average ROI', value: `${(stats?.topStats?.avgROI || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} Months`, icon: Clock, color: 'amber' },
+          { label: 'Active Projects', value: stats?.topStats?.activeProjects || 0, icon: Activity, color: 'blue' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-zinc-900/40 backdrop-blur-sm border border-zinc-800 p-6 rounded-2xl shadow-lg">
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-2 bg-${stat.color}-500/10 rounded-lg`}>
+                <stat.icon className={`text-${stat.color}-500`} size={20} />
+              </div>
             </div>
+            <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
+            <p className="text-2xl font-mono font-bold text-white">{stat.value}</p>
           </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Approved Investment</h3>
-          <p className="text-2xl font-mono font-bold text-white">${(stats?.topStats?.totalInvestment || 0).toLocaleString()}</p>
-        </div>
-
-        <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <TrendingUp className="text-emerald-500" size={20} />
-            </div>
-          </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Global FOB Impact</h3>
-          <p className="text-2xl font-mono font-bold text-emerald-500">-${(stats?.topStats?.totalFOBSavings || 0).toFixed(4)} <span className="text-sm">/prs</span></p>
-        </div>
-
-        <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <Clock className="text-amber-500" size={20} />
-            </div>
-          </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Average ROI</h3>
-          <p className="text-2xl font-mono font-bold text-white">{(stats?.topStats?.avgROI || 0).toFixed(1)} <span className="text-sm">Months</span></p>
-        </div>
-
-        <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Activity className="text-blue-500" size={20} />
-            </div>
-          </div>
-          <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Active Projects</h3>
-          <p className="text-2xl font-mono font-bold text-white">{stats?.topStats?.activeProjects || 0}</p>
-        </div>
+        ))}
       </div>
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* Left Column: Charts */}
-        <div className="lg:col-span-2 space-y-8">
+        {/* Charts */}
+        <div className="space-y-8">
           {reports.length === 0 ? (
-            <div className="factory-border bg-zinc-900/50 p-12 rounded-xl text-center text-zinc-500">
+            <div className="bg-zinc-900/40 border border-zinc-800 p-12 rounded-2xl text-center text-zinc-500">
               <p className="text-lg font-bold">No reports found.</p>
               <p className="text-sm">Create your first ROI report to see analytics.</p>
             </div>
           ) : (
             <>
-              <div className="factory-border bg-zinc-900/50 p-6 rounded-xl h-80">
+              <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl">
                 <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 size={16} className="text-zinc-400" />
                   Monthly Savings
                 </h3>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <BarChart data={monthlySavings}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                    <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
-                      itemStyle={{ color: '#e4e4e7' }}
-                    />
-                    <Bar dataKey="value" name="Savings ($)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="h-[300px] w-full min-w-[0]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlySavings}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                        itemStyle={{ color: '#e4e4e7' }}
+                      />
+                      <Bar dataKey="value" name="Savings ($)" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
               
-              <div className="factory-border bg-zinc-900/50 p-6 rounded-xl h-80">
+              <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl">
                 <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 size={16} className="text-zinc-400" />
                   Investment by Vendor
                 </h3>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                  <BarChart data={vendorInvestment}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                    <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
-                      itemStyle={{ color: '#e4e4e7' }}
-                    />
-                    <Bar dataKey="value" name="Investment ($)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="h-[300px] w-full min-w-[0]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={vendorInvestment}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                        itemStyle={{ color: '#e4e4e7' }}
+                      />
+                      <Bar dataKey="value" name="Investment ($)" fill="#3b82f6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </>
           )}
         </div>
 
-        {/* Right Column: ROI Distribution & History */}
-        <div className="space-y-8">
-          <div className="factory-border bg-zinc-900/50 p-6 rounded-xl h-80">
-            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-              <PieChartIcon size={16} className="text-zinc-400" />
-              ROI Distribution
-            </h3>
-            {reports.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        {/* ROI Distribution */}
+        <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl">
+          <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+            <PieChartIcon size={16} className="text-zinc-400" />
+            ROI Distribution
+          </h3>
+          {reports.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data</div>
+          ) : (
+            <div className="h-[300px] w-full min-w-[0]">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={roiDistribution}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                   <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
@@ -331,17 +312,17 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
                   />
-                  <Bar dataKey="value" name="Count" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" name="Count" fill="#f59e0b" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Projects Table */}
-      <div className="factory-border bg-zinc-900/50 rounded-xl overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <FilePlus size={16} className="text-zinc-400" />
             CAPEX Projects
@@ -388,22 +369,22 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
               {filteredReports.map((r) => (
                 <tr key={r.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-sm text-zinc-200">{r.machine_name}</div>
+                    <div className="font-bold text-sm text-zinc-200">{r.machine_name || 'Unnamed Project'}</div>
                     <div className="text-[10px] text-zinc-500 mt-1 font-mono">{r.project_id || `REQ-${r.id}`} • {r.shoe_model}</div>
                   </td>
                   <td className="px-6 py-4">
                     <StatusChangeDropdown reportId={r.id} currentStatus={r.status || 'Draft'} onUpdate={fetchDashboardData} />
                   </td>
                   <td className="px-6 py-4 font-mono text-sm text-zinc-300">
-                    ${(r.investment_cost || 0).toLocaleString()}
+                    ${(r.investment_cost || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </td>
                   <td className="px-6 py-4">
                     <span className="font-mono text-sm text-emerald-500 font-bold">
-                      -${(r.fob_impact || 0).toFixed(4)}
+                      -${(r.fob_impact || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-mono text-sm text-amber-500">
-                    {r.roi_months || r.payback_period} mo
+                    {(r.roi_months || r.payback_period || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} mo
                   </td>
                   <td className="px-6 py-4 text-right relative">
                     <div className="flex items-center justify-end gap-2">
