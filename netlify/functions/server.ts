@@ -115,13 +115,28 @@ app.get("/api/roi-reports", async (req, res) => {
 
 app.post("/api/roi-reports", async (req, res) => {
   try {
-    const { 
-      project_id, machine_name, shoe_model, vendor, investment_cost, 
-      labor_saving_cost, energy_saving_cost, other_savings, 
-      annual_savings, annual_output, roi_months, roi_percentage, 
-      ai_verdict, status, tags 
-    } = req.body;
+    let data = req.body;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch (e) {}
+    }
 
+    const params = [
+      String(data.project_id || `PRJ-${Date.now()}`),
+      String(data.machine_name || ''),
+      String(data.shoe_model || ''),
+      String(data.vendor || ''),
+      Number(data.investment_cost) || 0,
+      Number(data.labor_saving_cost) || 0,
+      Number(data.energy_saving_cost) || 0,
+      Number(data.other_savings) || 0,
+      Number(data.annual_savings) || 0,
+      Number(data.annual_output) || 0,
+      Number(data.roi_months) || 0,
+      Number(data.roi_percentage) || 0,
+      String(data.ai_evaluation || data.ai_verdict || ''), // Hỗ trợ cả 2 tên biến
+      String(data.status || 'Draft'),
+      JSON.stringify(data.tags || [])
+    ];
     const result = await query(`
       INSERT INTO roi_reports (
         project_id, machine_name, shoe_model, vendor, investment_cost, 
@@ -129,14 +144,9 @@ app.post("/api/roi-reports", async (req, res) => {
         annual_savings, annual_output, roi_months, roi_percentage, 
         ai_verdict, status, tags
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-    `, [
-      project_id, machine_name, shoe_model, vendor, investment_cost,
-      labor_saving_cost, energy_saving_cost, other_savings,
-      annual_savings, annual_output, roi_months, roi_percentage,
-      ai_verdict, status || 'Draft', JSON.stringify(tags || [])
-    ]);
+    `, params);
 
-    res.json({ id: result[0]?.id });
+    res.json({ success: true, id: result[0]?.id });
   } catch (err: any) {
     console.error("POST /api/roi-reports Error:", err);
     res.status(500).json({ error: "Failed to save ROI report", details: err.message || err.toString() });
