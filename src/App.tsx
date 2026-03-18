@@ -28,15 +28,20 @@ export default function App() {
     refreshTrigger
   } = useAppState();
 
+  const [editingReportData, setEditingReportData] = React.useState<any>(null);
+
   const t = TRANSLATIONS[lang];
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const projectId = `CAPEX-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const isUpdate = !!editingReportData?.id;
+      const url = isUpdate ? `/api/roi-reports/${editingReportData.id}` : '/api/roi-reports';
+      const method = isUpdate ? 'PATCH' : 'POST';
+      const projectId = editingReportData?.project_id || `CAPEX-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
-      await fetch('/api/roi-reports', {
-        method: 'POST',
+      await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: projectId,
@@ -60,8 +65,9 @@ export default function App() {
         })
       });
       
-      alert(`Report saved successfully. Project ID: ${projectId}`);
+      alert(`Report ${isUpdate ? 'updated' : 'saved'} successfully. Project ID: ${projectId}`);
       triggerRefresh();
+      setEditingReportData(null);
       setActiveTab('dashboard');
     } catch (error: any) {
       console.error(error);
@@ -150,7 +156,7 @@ export default function App() {
 
         <div className="p-8">
           {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} />}
-          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} setParams={setParams} setUploadedImages={setUploadedImages} setEditingReportId={setEditingReportId} setCurrentStatus={setCurrentStatus} setAiEvaluation={setAiEvaluation} setProjectName={setProjectName} />}
+          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={(report) => { setEditingReportData(report); setActiveTab('roi'); }} />}
           {activeTab === 'ai' && <AIChatbot lang={lang} t={t} />}
           {activeTab === 'roi' && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -161,6 +167,7 @@ export default function App() {
                   setParams={setParams} 
                   uploadedImages={uploadedImages} 
                   setUploadedImages={setUploadedImages} 
+                  initialData={editingReportData}
                 />
               </div>
               <div className="lg:col-span-7 space-y-6">

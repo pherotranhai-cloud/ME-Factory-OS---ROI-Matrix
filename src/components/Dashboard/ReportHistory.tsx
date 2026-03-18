@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Edit2 } from 'lucide-react';
 
-export const ReportHistory = ({ lang, t, setActiveTab, setParams, setEditingReportId, setCurrentStatus, setUploadedImages, setAiEvaluation, setProjectName, refreshTrigger }: any) => {
+export const ReportHistory = ({ lang, t, onEditReport, refreshTrigger }: any) => {
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -19,20 +19,7 @@ export const ReportHistory = ({ lang, t, setActiveTab, setParams, setEditingRepo
   }, [refreshTrigger]);
 
   const handleEdit = (report: any) => {
-    setEditingReportId(report.id);
-    setCurrentStatus(report.status);
-    setProjectName(report.project_id);
-    setUploadedImages(typeof report.image_url === 'string' ? JSON.parse(report.image_url || '[]') : report.image_url);
-    setAiEvaluation(typeof report.ai_evaluation === 'string' ? JSON.parse(report.ai_evaluation || 'null') : report.ai_evaluation);
-    
-    // Assuming params are stored in a way we can recover them. 
-    // If not, we might need to add a params column to roi_reports.
-    // For now, let's assume we can't fully recover params without a column.
-    // The user request implies we should be able to load the report data back.
-    // I will assume for now we need to add a 'params' column to the roi_reports table.
-    // Since I cannot easily change the DB schema, I will just set what I can.
-    
-    setActiveTab('roi');
+    onEditReport(report);
   };
 
   if (isLoading) return <div className="text-zinc-500">Loading...</div>;

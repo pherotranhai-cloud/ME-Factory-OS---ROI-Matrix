@@ -105,10 +105,43 @@ interface ROICalculatorFormProps {
   setParams: (params: ROIParams) => void;
   uploadedImages: string[];
   setUploadedImages: (images: string[]) => void;
+  initialData?: any;
 }
 
-export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages }) => {
+export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, initialData }) => {
   const [roiStep, setRoiStep] = useState(1);
+
+  React.useEffect(() => {
+    if (initialData) {
+      setParams({
+        shoeModel: initialData.shoe_model || '',
+        date: initialData.date || new Date().toISOString().split('T')[0],
+        equipmentName: initialData.machine_name || '',
+        machineType: initialData.tags?.[1] || '',
+        brand: initialData.vendor || '',
+        scopeOfWork: '',
+        machineQuantity: 1,
+        powerSupplyV: '380',
+        powerConsumptionKW: 0,
+        speedSPrs: 0,
+        unitPrice: initialData.investment_cost || 0,
+        maintenanceCostPerYear: 0,
+        consumablesCostPerYear: 0,
+        depreciationYears: 5,
+        manualCapacityPerHour: 0,
+        manualDefectiveRate: 0,
+        manualManpower: 0,
+        machineCapacityPerHour: 0,
+        machineDefectiveRate: 0,
+        machineManpower: 0,
+        currentMaterialCost: 0,
+        proposedMaterialCost: 0,
+        workingHoursPerDay: 8,
+        localLaborCost: 0,
+      });
+      setUploadedImages(typeof initialData.image_url === 'string' ? JSON.parse(initialData.image_url || '[]') : (initialData.image_url || []));
+    }
+  }, [initialData, setParams, setUploadedImages]);
 
   return (
     <div className="space-y-6">
