@@ -133,17 +133,23 @@ app.post("/api/roi-reports", async (req, res) => {
       Number(data.annual_output) || 0,
       Number(data.roi_months) || 0,
       Number(data.roi_percentage) || 0,
-      String(data.ai_evaluation || data.ai_verdict || ''), // Hỗ trợ cả 2 tên biến
+      String(data.ai_evaluation || data.ai_verdict || ''), 
       String(data.status || 'Draft'),
       JSON.stringify(data.tags || [])
     ];
+
+    // BÍ QUYẾT Ở ĐÂY: Thêm ::text, ::numeric, ::jsonb vào sau dấu ?
     const result = await query(`
       INSERT INTO roi_reports (
         project_id, machine_name, shoe_model, vendor, investment_cost, 
         labor_saving_cost, energy_saving_cost, other_savings, 
         annual_savings, annual_output, roi_months, roi_percentage, 
         ai_verdict, status, tags
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+      ) VALUES (
+        ?::text, ?::text, ?::text, ?::text, ?::numeric, 
+        ?::numeric, ?::numeric, ?::numeric, ?::numeric, ?::numeric, 
+        ?::numeric, ?::numeric, ?::text, ?::text, ?::jsonb
+      ) RETURNING id
     `, params);
 
     res.json({ success: true, id: result[0]?.id });
