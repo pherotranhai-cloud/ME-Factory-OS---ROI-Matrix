@@ -71,11 +71,14 @@ if (!isProd || !process.env.DATABASE_URL) {
       other_savings REAL,
       annual_savings REAL,
       annual_output REAL,
+      fob_impact REAL,
       roi_months REAL,
       roi_percentage REAL,
       ai_verdict TEXT,
+      ai_evaluation TEXT, -- JSON object
       status TEXT DEFAULT 'Draft',
       tags TEXT, -- JSON array
+      image_url TEXT, -- JSON array
       language_codes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(user_id) REFERENCES users(id)
@@ -103,6 +106,12 @@ if (!isProd || !process.env.DATABASE_URL) {
 
   try {
     db.exec("ALTER TABLE roi_reports ADD COLUMN annual_output REAL;");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE roi_reports ADD COLUMN fob_impact REAL;");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE roi_reports ADD COLUMN image_url TEXT;");
   } catch (e) {}
 }
 
@@ -234,22 +243,22 @@ async function startServer() {
       const { 
         project_id, machine_name, shoe_model, vendor, investment_cost, 
         labor_saving_cost, energy_saving_cost, other_savings, 
-        annual_savings, annual_output, roi_months, roi_percentage, 
-        ai_verdict, status, tags 
+        annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
+        ai_verdict, ai_evaluation, status, tags, image_url 
       } = req.body;
 
       const result = await query(`
         INSERT INTO roi_reports (
           project_id, machine_name, shoe_model, vendor, investment_cost, 
           labor_saving_cost, energy_saving_cost, other_savings, 
-          annual_savings, annual_output, roi_months, roi_percentage, 
-          ai_verdict, status, tags
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+          annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
+          ai_verdict, ai_evaluation, status, tags, image_url
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
       `, [
         project_id, machine_name, shoe_model, vendor, investment_cost,
         labor_saving_cost, energy_saving_cost, other_savings,
-        annual_savings, annual_output, roi_months, roi_percentage,
-        ai_verdict, status || 'Draft', JSON.stringify(tags || [])
+        annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
+        ai_verdict, JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || [])
       ]);
 
       res.json({ id: (result as any).insertId || (result as any)[0]?.id });
@@ -297,17 +306,23 @@ async function startServer() {
           SUM(investment_cost) as total_investment,
           SUM(annual_savings) as total_savings,
           SUM(annual_output) as total_output,
-          AVG(roi_months) as avg_roi
+          AVG(roi_months) as avg_roi,
+          AVG(fob_impact) as avg_fob_impact,
+          COUNT(*) as total_projects
         FROM roi_reports
         WHERE status IN ('Approved', 'Implemented')
       `);
 
+      const activeCount = await queryOne(`
+        SELECT COUNT(*) as count FROM roi_reports WHERE status IN ('Pending', 'Approved', 'Implemented')
+      `);
+
       const distribution = await query(`
-        SELECT status, COUNT(*) as count FROM roi_reports GROUP BY status
+        SELECT status as name, COUNT(*) as value FROM roi_reports GROUP BY status
       `);
 
       const comparison = await query(`
-        SELECT machine_name, investment_cost, annual_savings FROM roi_reports
+        SELECT machine_name, investment_cost as investment, fob_impact as fob_impact FROM roi_reports
         ORDER BY created_at DESC LIMIT 10
       `);
 
@@ -316,7 +331,9 @@ async function startServer() {
           totalInvestment: Number(stats.total_investment) || 0,
           totalSavings: Number(stats.total_savings) || 0,
           totalOutput: Number(stats.total_output) || 0,
-          avg_roi: Number(stats.avg_roi) || 0
+          avgROI: Number(stats.avg_roi) || 0,
+          totalFOBSavings: Number(stats.avg_fob_impact) || 0,
+          activeProjects: Number(activeCount.count) || 0
         },
         statusDistribution: distribution,
         comparisonData: comparison

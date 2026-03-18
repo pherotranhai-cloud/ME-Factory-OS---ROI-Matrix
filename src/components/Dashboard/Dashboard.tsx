@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   X, 
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  Download
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -20,6 +22,8 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Language } from '../../types';
+import { CAPEXReportTemplate, generatePDF } from '../Reports/PDFTemplate';
+import { TRANSLATIONS } from '../../constants/translations';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -96,6 +100,7 @@ export const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -161,6 +166,19 @@ export const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
   });
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#71717a'];
+
+  const handleExportPDF = async (report: any) => {
+    try {
+      // We need to temporarily render the template to capture it
+      setSelectedReport(report);
+      setTimeout(async () => {
+        await generatePDF('capex-template', `CAPEX_Proposal_${report.shoe_model}_${report.created_at.split('T')[0]}.pdf`);
+      }, 500);
+    } catch (err: any) {
+      console.error(err);
+      alert('PDF Export failed: ' + err.message);
+    }
+  };
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-full">
@@ -359,21 +377,30 @@ export const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
                     {r.roi_months || r.payback_period} mo
                   </td>
                   <td className="px-6 py-4 text-right relative">
-                    {deleteConfirm === r.id ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="text-[10px] text-red-400 font-bold uppercase">Sure?</span>
-                        <button onClick={() => handleDelete(r.id)} className="p-1.5 bg-red-500/20 text-red-500 rounded hover:bg-red-500 hover:text-white transition-colors">
-                          <CheckCircle2 size={14} />
-                        </button>
-                        <button onClick={() => setDeleteConfirm(null)} className="p-1.5 bg-zinc-800 text-zinc-400 rounded hover:text-white transition-colors">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                        <Trash2 size={16} />
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => setSelectedReport(r)}
+                        className="p-2 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all"
+                        title="View Report"
+                      >
+                        <Eye size={16} />
                       </button>
-                    )}
+                      {deleteConfirm === r.id ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-[10px] text-red-400 font-bold uppercase">Sure?</span>
+                          <button onClick={() => handleDelete(r.id)} className="p-1.5 bg-red-500/20 text-red-500 rounded hover:bg-red-500 hover:text-white transition-colors">
+                            <CheckCircle2 size={14} />
+                          </button>
+                          <button onClick={() => setDeleteConfirm(null)} className="p-1.5 bg-zinc-800 text-zinc-400 rounded hover:text-white transition-colors">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

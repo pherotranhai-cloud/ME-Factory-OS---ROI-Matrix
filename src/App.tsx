@@ -45,9 +45,12 @@ export default function App() {
           roi_months: advancedResults?.roiMonths,
           roi_percentage: advancedResults ? (advancedResults.savings.totalAnnualSaving / params.unitPrice) * 100 : 0,
           ai_verdict: aiEvaluation?.verdict,
+          ai_evaluation: aiEvaluation,
           status: 'Draft',
           tags: ['ROI', params.machineType, params.shoeModel],
-          annual_output: advancedResults?.machine.annualCapacity
+          annual_output: advancedResults?.machine.annualCapacity,
+          fob_impact: advancedResults?.savings.fobImpact,
+          image_url: uploadedImages
         })
       });
       
