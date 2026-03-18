@@ -167,6 +167,35 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#71717a'];
 
+  const monthlySavings = React.useMemo(() => {
+    const data: Record<string, number> = {};
+    reports.forEach(r => {
+      const month = new Date(r.created_at).toLocaleString('default', { month: 'short' });
+      data[month] = (data[month] || 0) + (r.annual_savings || 0);
+    });
+    return Object.entries(data).map(([name, value]) => ({ name, value }));
+  }, [reports]);
+
+  const vendorInvestment = React.useMemo(() => {
+    const data: Record<string, number> = {};
+    reports.forEach(r => {
+      const vendor = r.vendor || 'Unknown';
+      data[vendor] = (data[vendor] || 0) + (r.investment_cost || 0);
+    });
+    return Object.entries(data).map(([name, value]) => ({ name, value }));
+  }, [reports]);
+
+  const roiDistribution = React.useMemo(() => {
+    const bins = [0, 6, 12, 18, 24, 36];
+    const data = bins.map(b => ({ name: `${b}+ mo`, value: 0 }));
+    reports.forEach(r => {
+      const months = r.roi_months || 0;
+      const binIndex = bins.findIndex((b, i) => months >= b && (i === bins.length - 1 || months < bins[i+1]));
+      if (binIndex !== -1) data[binIndex].value++;
+    });
+    return data;
+  }, [reports]);
+
   const handleExportPDF = async (report: any) => {
     try {
       // We need to temporarily render the template to capture it
@@ -236,76 +265,76 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
         
         {/* Left Column: Charts */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-              <BarChart3 size={16} className="text-zinc-400" />
-              Investment vs FOB Impact
-            </h3>
-            {stats?.comparisonData && stats.comparisonData.length > 0 ? (
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.comparisonData}>
+          {reports.length === 0 ? (
+            <div className="factory-border bg-zinc-900/50 p-12 rounded-xl text-center text-zinc-500">
+              <p className="text-lg font-bold">No reports found.</p>
+              <p className="text-sm">Create your first ROI report to see analytics.</p>
+            </div>
+          ) : (
+            <>
+              <div className="factory-border bg-zinc-900/50 p-6 rounded-xl h-80">
+                <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+                  <BarChart3 size={16} className="text-zinc-400" />
+                  Monthly Savings
+                </h3>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <BarChart data={monthlySavings}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                    <XAxis dataKey="machine_name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="left" orientation="left" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
                     <RechartsTooltip 
                       contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
                       itemStyle={{ color: '#e4e4e7' }}
                     />
-                    <Legend wrapperStyle={{ fontSize: '10px' }} />
-                    <Bar yAxisId="left" dataKey="investment" name="Investment ($)" fill="#3f3f46" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="right" dataKey="fob_impact" name="FOB Impact ($/prs)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" name="Savings ($)" fill="#10b981" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data Available</div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Status Pie & History */}
-        <div className="space-y-8">
-          <div className="factory-border bg-zinc-900/50 p-6 rounded-xl">
-            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-              <PieChartIcon size={16} className="text-zinc-400" />
-              Project Status
-            </h3>
-            {stats?.statusDistribution && stats.statusDistribution.length > 0 ? (
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats.statusDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {stats.statusDistribution.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
+              
+              <div className="factory-border bg-zinc-900/50 p-6 rounded-xl h-80">
+                <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+                  <BarChart3 size={16} className="text-zinc-400" />
+                  Investment by Vendor
+                </h3>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <BarChart data={vendorInvestment}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                    <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
                     <RechartsTooltip 
                       contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                      itemStyle={{ color: '#e4e4e7' }}
                     />
-                  </PieChart>
+                    <Bar dataKey="value" name="Investment ($)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
+            </>
+          )}
+        </div>
+
+        {/* Right Column: ROI Distribution & History */}
+        <div className="space-y-8">
+          <div className="factory-border bg-zinc-900/50 p-6 rounded-xl h-80">
+            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+              <PieChartIcon size={16} className="text-zinc-400" />
+              ROI Distribution
+            </h3>
+            {reports.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data</div>
             ) : (
-              <div className="h-[200px] flex items-center justify-center text-zinc-600 text-sm font-bold uppercase tracking-widest">No Data Available</div>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <BarChart data={roiDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="value" name="Count" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
-            <div className="flex flex-wrap gap-3 mt-4 justify-center">
-              {stats?.statusDistribution?.map((s: any, i: number) => (
-                <div key={s.name} className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                  {s.name} ({s.value})
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
