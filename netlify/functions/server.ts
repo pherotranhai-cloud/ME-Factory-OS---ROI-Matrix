@@ -36,11 +36,14 @@ const query = async (text: string, params: any[] = []) => {
   const pool = getPool();
   if (pool) {
     try {
-      const res = await pool.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+      // BỘ LỌC MA THUẬT: Đổi toàn bộ 'undefined' thành 'null' để PostgreSQL không bị lú
+      const cleanParams = params.map(p => p === undefined ? null : p);
+      
+      const res = await pool.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), cleanParams);
       return res.rows;
     } catch (dbErr) {
       console.error("SQL Database Error:", dbErr);
-      throw dbErr;
+      throw dbErr; 
     }
   }
   throw new Error("Database not connected. Check DATABASE_URL.");
