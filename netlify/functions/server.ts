@@ -1,10 +1,14 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { Pool } from "@neondatabase/serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws"; // 1. Import thư viện WebSocket
 import { v2 as cloudinary } from "cloudinary";
 import serverless from "serverless-http";
 import { GoogleGenAI } from "@google/genai";
+
+// 2. DÒNG MA THUẬT: Cấp phép cho NeonDB dùng WebSocket trên Netlify
+neonConfig.webSocketConstructor = ws; 
 
 // Database Connection
 let pgPool: Pool | null = null;
@@ -27,7 +31,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Helper for DB queries (Đã thêm try-catch để log lỗi SQL chi tiết)
+// Helper for DB queries
 const query = async (text: string, params: any[] = []) => {
   const pool = getPool();
   if (pool) {
@@ -36,7 +40,7 @@ const query = async (text: string, params: any[] = []) => {
       return res.rows;
     } catch (dbErr) {
       console.error("SQL Database Error:", dbErr);
-      throw dbErr; // Ném lỗi này ra cho các Route API bắt lấy
+      throw dbErr;
     }
   }
   throw new Error("Database not connected. Check DATABASE_URL.");
@@ -47,7 +51,8 @@ const queryOne = async (text: string, params: any[] = []) => {
   return Array.isArray(rows) ? rows[0] : rows;
 };
 
-// API Routes
+// --- API Routes ---
+
 app.post("/api/upload", async (req: any, res) => {
   res.status(400).json({ error: "Use client-side upload for production" });
 });
@@ -210,7 +215,7 @@ app.delete("/api/roi-reports/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await query("DELETE FROM report_history WHERE report_id = ?", [id]);
-    await query("DELETE FROM report_embeddings WHERE report_id = ?", [id]); // Bảng này có thể gây lỗi nếu chưa tạo
+    await query("DELETE FROM report_embeddings WHERE report_id = ?", [id]);
     await query("DELETE FROM roi_reports WHERE id = ?", [id]);
     res.json({ success: true });
   } catch (err: any) {
