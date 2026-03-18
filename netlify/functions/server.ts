@@ -120,7 +120,24 @@ app.post("/api/roi-reports", async (req, res) => {
       try { data = JSON.parse(data); } catch (e) {}
     }
 
-    const params = [
+    // Lấy pool trực tiếp để gọi lệnh, bỏ qua hàm helper
+    const pool = getPool();
+    if (!pool) throw new Error("Database not connected");
+
+    const text = `
+      INSERT INTO roi_reports (
+        project_id, machine_name, shoe_model, vendor, investment_cost, 
+        labor_saving_cost, energy_saving_cost, other_savings, 
+        annual_savings, annual_output, roi_months, roi_percentage, 
+        ai_verdict, status, tags
+      ) VALUES (
+        $1, $2, $3, $4, $5, 
+        $6, $7, $8, $9, $10, 
+        $11, $12, $13, $14, $15::jsonb
+      ) RETURNING id
+    `;
+
+    const values = [
       String(data.project_id || `PRJ-${Date.now()}`),
       String(data.machine_name || ''),
       String(data.shoe_model || ''),
@@ -135,24 +152,13 @@ app.post("/api/roi-reports", async (req, res) => {
       Number(data.roi_percentage) || 0,
       String(data.ai_evaluation || data.ai_verdict || ''), 
       String(data.status || 'Draft'),
-      JSON.stringify(data.tags || [])
+      JSON.stringify(data.tags || []) // Ép chặt định dạng JSONB ở $15::jsonb
     ];
 
-    // BÍ QUYẾT Ở ĐÂY: Thêm ::text, ::numeric, ::jsonb vào sau dấu ?
-    const result = await query(`
-      INSERT INTO roi_reports (
-        project_id, machine_name, shoe_model, vendor, investment_cost, 
-        labor_saving_cost, energy_saving_cost, other_savings, 
-        annual_savings, annual_output, roi_months, roi_percentage, 
-        ai_verdict, status, tags
-      ) VALUES (
-        ?::text, ?::text, ?::text, ?::text, ?::numeric, 
-        ?::numeric, ?::numeric, ?::numeric, ?::numeric, ?::numeric, 
-        ?::numeric, ?::numeric, ?::text, ?::text, ?::jsonb
-      ) RETURNING id
-    `, params);
+    // Truy vấn trực tiếp bằng thư viện gốc
+    const result = await pool.query(text, values);
 
-    res.json({ success: true, id: result[0]?.id });
+    res.json({ success: true, id: result.rows[0].id });
   } catch (err: any) {
     console.error("POST /api/roi-reports Error:", err);
     res.status(500).json({ error: "Failed to save ROI report", details: err.message || err.toString() });
