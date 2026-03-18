@@ -124,16 +124,17 @@ app.post("/api/roi-reports", async (req, res) => {
     const pool = getPool();
     if (!pool) throw new Error("Database not connected");
 
+    // BỔ SUNG form_data và $16::jsonb vào câu lệnh SQL
     const text = `
       INSERT INTO roi_reports (
         project_id, machine_name, shoe_model, vendor, investment_cost, 
         labor_saving_cost, energy_saving_cost, other_savings, 
         annual_savings, annual_output, roi_months, roi_percentage, 
-        ai_verdict, status, tags
+        ai_verdict, status, tags, form_data
       ) VALUES (
         $1, $2, $3, $4, $5, 
         $6, $7, $8, $9, $10, 
-        $11, $12, $13, $14, $15::jsonb
+        $11, $12, $13, $14, $15::jsonb, $16::jsonb
       ) RETURNING id
     `;
 
@@ -152,7 +153,8 @@ app.post("/api/roi-reports", async (req, res) => {
       Number(data.roi_percentage) || 0,
       String(data.ai_evaluation || data.ai_verdict || ''), 
       String(data.status || 'Draft'),
-      JSON.stringify(data.tags || []) // Ép chặt định dạng JSONB ở $15::jsonb
+      JSON.stringify(data.tags || []), 
+      JSON.stringify(data.form_data || {}) // Bơm toàn bộ dữ liệu form thô vào đây
     ];
 
     // Truy vấn trực tiếp bằng thư viện gốc
@@ -164,7 +166,56 @@ app.post("/api/roi-reports", async (req, res) => {
     res.status(500).json({ error: "Failed to save ROI report", details: err.message || err.toString() });
   }
 });
+// API Cập nhật (Edit) báo cáo đã tồn tại
+app.patch("/api/roi-reports/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    let data = req.body;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch (e) {}
+    }
 
+    const pool = getPool();
+    if (!pool) throw new Error("Database not connected");
+
+    // Dùng cú pháp $1, $2 và ép kiểu cứng ::jsonb để tránh lỗi PostgreSQL
+    const text = `
+      UPDATE roi_reports SET
+        project_id = $1, machine_name = $2, shoe_model = $3, vendor = $4,
+        investment_cost = $5, labor_saving_cost = $6, energy_saving_cost = $7,
+        other_savings = $8, annual_savings = $9, annual_output = $10,
+        roi_months = $11, roi_percentage = $12, ai_verdict = $13,
+        tags = $14::jsonb, form_data = $15::jsonb
+      WHERE id = $16::integer
+    `;
+
+    const values = [
+      String(data.project_id || ''),
+      String(data.machine_name || ''),
+      String(data.shoe_model || ''),
+      String(data.vendor || ''),
+      Number(data.investment_cost) || 0,
+      Number(data.labor_saving_cost) || 0,
+      Number(data.energy_saving_cost) || 0,
+      Number(data.other_savings) || 0,
+      Number(data.annual_savings) || 0,
+      Number(data.annual_output) || 0,
+      Number(data.roi_months) || 0,
+      Number(data.roi_percentage) || 0,
+      String(data.ai_evaluation || data.ai_verdict || ''), 
+      JSON.stringify(data.tags || []),
+      JSON.stringify(data.form_data || {}), // Bơm cục dữ liệu thô vào đây
+      id
+    ];
+
+    await pool.query(text, values);
+
+    res.json({ success: true, id });
+  } catch (err: any) {
+    console.error("PATCH /api/roi-reports/:id Error:", err);
+    res.status(500).json({ error: "Failed to update ROI report", details: err.message || err.toString() });
+  }
+});
 app.patch("/api/roi-reports/:id/status", async (req, res) => {
   try {
     // Ép kiểu ID thành số nguyên
