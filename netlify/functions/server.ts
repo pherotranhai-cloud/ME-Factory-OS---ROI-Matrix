@@ -167,16 +167,36 @@ app.post("/api/roi-reports", async (req, res) => {
 
 app.patch("/api/roi-reports/:id/status", async (req, res) => {
   try {
-    const { id } = req.params;
+    // Ép kiểu ID thành số nguyên
+    const id = Number(req.params.id);
     const { status, changed_by, comment } = req.body;
-    const report = await queryOne("SELECT status FROM roi_reports WHERE id = ?", [id]);
-    if (!report) return res.status(404).json({ error: "Report not found" });
 
-    await query("UPDATE roi_reports SET status = ? WHERE id = ?", [status, id]);
-    await query(
-      "INSERT INTO report_history (report_id, status_from, status_to, changed_by, comment) VALUES (?, ?, ?, ?, ?)",
-      [id, report.status, status, changed_by, comment]
+    const pool = getPool();
+    if (!pool) throw new Error("Database not connected");
+
+    // 1. Lấy status cũ trực tiếp bằng pool
+    const checkRes = await pool.query("SELECT status FROM roi_reports WHERE id = $1::integer", [id]);
+    if (checkRes.rows.length === 0) return res.status(404).json({ error: "Report not found" });
+    const oldStatus = checkRes.rows[0].status;
+
+    // 2. Cập nhật status mới (ép kiểu ::text và ::integer)
+    await pool.query(
+      "UPDATE roi_reports SET status = $1::text WHERE id = $2::integer", 
+      [String(status || 'Draft'), id]
     );
+
+    // 3. Ghi log vào lịch sử (ép kiểu toàn bộ tham số)
+    await pool.query(
+      "INSERT INTO report_history (report_id, status_from, status_to, changed_by, comment) VALUES ($1::integer, $2::text, $3::text, $4::text, $5::text)",
+      [
+        id, 
+        String(oldStatus || ''), 
+        String(status || 'Draft'), 
+        String(changed_by || 'System'), 
+        String(comment || '')
+      ]
+    );
+
     res.json({ success: true });
   } catch (err: any) {
     console.error("PATCH /api/roi-reports/:id/status Error:", err);
