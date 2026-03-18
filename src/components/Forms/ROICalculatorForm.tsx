@@ -36,7 +36,7 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'djgai7h3b';
     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 
     try {

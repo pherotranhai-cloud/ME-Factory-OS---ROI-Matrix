@@ -1,4 +1,4 @@
-import { Client } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import { GoogleGenAI } from '@google/genai';
 import { Handler } from '@netlify/functions';
 
@@ -9,21 +9,19 @@ export const handler: Handler = async () => {
     timestamp: new Date().toISOString(),
   };
 
-  // 1. Check Database
-  const client = new Client(process.env.DATABASE_URL);
+  // 1. Check Database using HTTP
   try {
-    await client.connect();
-    await client.query('SELECT 1');
+    const sql = neon(process.env.DATABASE_URL!);
+    await sql('SELECT 1');
     results.database = 'connected';
   } catch (error: any) {
     results.database = `error: ${error.message}`;
-  } finally {
-    await client.end();
   }
 
   // 2. Check Gemini API
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+    if (!process.env.GEMINI_API_KEY) throw new Error("Missing API Key");
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [{ parts: [{ text: 'ping' }] }]
