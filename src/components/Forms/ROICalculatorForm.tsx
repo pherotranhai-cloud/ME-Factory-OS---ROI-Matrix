@@ -113,32 +113,10 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
 
   React.useEffect(() => {
     if (initialData) {
-      setParams({
-        shoeModel: initialData.shoe_model || '',
-        date: initialData.date || new Date().toISOString().split('T')[0],
-        equipmentName: initialData.machine_name || '',
-        machineType: initialData.tags?.[1] || '',
-        brand: initialData.vendor || '',
-        scopeOfWork: '',
-        machineQuantity: 1,
-        powerSupplyV: '380',
-        powerConsumptionKW: 0,
-        speedSPrs: 0,
-        unitPrice: initialData.investment_cost || 0,
-        maintenanceCostPerYear: 0,
-        consumablesCostPerYear: 0,
-        depreciationYears: 5,
-        manualCapacityPerHour: 0,
-        manualDefectiveRate: 0,
-        manualManpower: 0,
-        machineCapacityPerHour: 0,
-        machineDefectiveRate: 0,
-        machineManpower: 0,
-        currentMaterialCost: 0,
-        proposedMaterialCost: 0,
-        workingHoursPerDay: 8,
-        localLaborCost: 0,
-      });
+      const formData = typeof initialData.form_data === 'string' ? JSON.parse(initialData.form_data) : initialData.form_data;
+      if (formData) {
+        setParams(formData);
+      }
       setUploadedImages(typeof initialData.image_url === 'string' ? JSON.parse(initialData.image_url || '[]') : (initialData.image_url || []));
     }
   }, [initialData, setParams, setUploadedImages]);

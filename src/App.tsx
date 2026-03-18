@@ -61,7 +61,8 @@ export default function App() {
           tags: ['ROI', params.machineType, params.shoeModel],
           annual_output: advancedResults?.machine.annualCapacity,
           fob_impact: advancedResults?.savings.fobImpact,
-          image_url: uploadedImages
+          image_url: uploadedImages,
+          form_data: params
         })
       });
       

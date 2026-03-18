@@ -79,6 +79,7 @@ if (!isProd || !process.env.DATABASE_URL) {
       status TEXT DEFAULT 'Draft',
       tags TEXT, -- JSON array
       image_url TEXT, -- JSON array
+      form_data TEXT, -- JSON object
       language_codes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(user_id) REFERENCES users(id)
@@ -231,7 +232,8 @@ async function startServer() {
       const reports = await query(q.replace(/ILIKE/g, getPool() ? "ILIKE" : "LIKE"), params);
       res.json(reports.map((r: any) => ({
         ...r,
-        tags: typeof r.tags === 'string' ? JSON.parse(r.tags || "[]") : r.tags
+        tags: typeof r.tags === 'string' ? JSON.parse(r.tags || "[]") : r.tags,
+        form_data: typeof r.form_data === 'string' ? JSON.parse(r.form_data || "{}") : r.form_data
       })));
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch ROI reports" });
@@ -244,7 +246,7 @@ async function startServer() {
         project_id, machine_name, shoe_model, vendor, investment_cost, 
         labor_saving_cost, energy_saving_cost, other_savings, 
         annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
-        ai_verdict, ai_evaluation, status, tags, image_url 
+        ai_verdict, ai_evaluation, status, tags, image_url, form_data 
       } = req.body;
 
       const result = await query(`
@@ -252,18 +254,49 @@ async function startServer() {
           project_id, machine_name, shoe_model, vendor, investment_cost, 
           labor_saving_cost, energy_saving_cost, other_savings, 
           annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
-          ai_verdict, ai_evaluation, status, tags, image_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+          ai_verdict, ai_evaluation, status, tags, image_url, form_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
       `, [
         project_id, machine_name, shoe_model, vendor, investment_cost,
         labor_saving_cost, energy_saving_cost, other_savings,
         annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
-        ai_verdict, JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || [])
+        ai_verdict, JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || []), JSON.stringify(form_data || {})
       ]);
 
       res.json({ id: (result as any).insertId || (result as any)[0]?.id });
     } catch (err) {
       res.status(500).json({ error: "Failed to save ROI report" });
+    }
+  });
+
+  app.patch("/api/roi-reports/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { 
+        project_id, machine_name, shoe_model, vendor, investment_cost, 
+        labor_saving_cost, energy_saving_cost, other_savings, 
+        annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
+        ai_verdict, ai_evaluation, status, tags, image_url, form_data 
+      } = req.body;
+
+      await query(`
+        UPDATE roi_reports SET
+          project_id = ?, machine_name = ?, shoe_model = ?, vendor = ?, investment_cost = ?, 
+          labor_saving_cost = ?, energy_saving_cost = ?, other_savings = ?, 
+          annual_savings = ?, annual_output = ?, fob_impact = ?, roi_months = ?, roi_percentage = ?, 
+          ai_verdict = ?, ai_evaluation = ?, status = ?, tags = ?, image_url = ?, form_data = ?
+        WHERE id = ?
+      `, [
+        project_id, machine_name, shoe_model, vendor, investment_cost,
+        labor_saving_cost, energy_saving_cost, other_savings,
+        annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
+        ai_verdict, JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || []), JSON.stringify(form_data || {}),
+        id
+      ]);
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update ROI report" });
     }
   });
 
