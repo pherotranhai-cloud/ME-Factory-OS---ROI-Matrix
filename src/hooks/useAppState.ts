@@ -42,6 +42,7 @@ export const useAppState = () => {
   const [aiEvaluation, setAiEvaluation] = useState<any>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     setAdvancedResults(calculateAdvancedROI(params));
@@ -56,6 +57,8 @@ export const useAppState = () => {
     setCurrentStatus('Draft');
   };
 
+  const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
+
   return {
     activeTab, setActiveTab,
     lang, setLang,
@@ -68,6 +71,7 @@ export const useAppState = () => {
     aiEvaluation, setAiEvaluation,
     isEvaluating, setIsEvaluating,
     isSaving, setIsSaving,
-    resetForm
+    resetForm,
+    refreshTrigger, triggerRefresh
   };
 };

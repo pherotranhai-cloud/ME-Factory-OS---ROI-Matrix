@@ -1,5 +1,7 @@
 import React from 'react';
 import { Dashboard } from './components/Dashboard/Dashboard';
+import { ReportHistory } from './components/Dashboard/ReportHistory';
+import { AIChatbot } from './components/AI/AIChatbot';
 import { ROICalculatorForm } from './components/Forms/ROICalculatorForm';
 import { CAPEXReportTemplate, generatePDF } from './components/Reports/PDFTemplate';
 import { AIEvaluation } from './components/Reports/AIEvaluation';
@@ -12,14 +14,18 @@ export default function App() {
   const {
     activeTab, setActiveTab,
     lang, setLang,
-    projectName,
+    projectName, setProjectName,
     params, setParams,
     uploadedImages, setUploadedImages,
+    editingReportId, setEditingReportId,
+    currentStatus, setCurrentStatus,
     advancedResults,
     aiEvaluation, setAiEvaluation,
     isEvaluating, setIsEvaluating,
     isSaving, setIsSaving,
-    resetForm
+    resetForm,
+    triggerRefresh,
+    refreshTrigger
   } = useAppState();
 
   const t = TRANSLATIONS[lang];
@@ -55,6 +61,7 @@ export default function App() {
       });
       
       alert(`Report saved successfully. Project ID: ${projectId}`);
+      triggerRefresh();
       setActiveTab('dashboard');
     } catch (error: any) {
       console.error(error);
@@ -142,7 +149,9 @@ export default function App() {
         />
 
         <div className="p-8">
-          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} />}
+          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} />}
+          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} setParams={setParams} setUploadedImages={setUploadedImages} setEditingReportId={setEditingReportId} setCurrentStatus={setCurrentStatus} setAiEvaluation={setAiEvaluation} setProjectName={setProjectName} />}
+          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} />}
           {activeTab === 'roi' && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">

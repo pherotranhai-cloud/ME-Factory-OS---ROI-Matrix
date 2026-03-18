@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FilePlus, Cpu, Languages } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Cpu, Languages, History, MessageSquare } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Language } from '../../types';
@@ -43,6 +43,8 @@ export const Sidebar = ({ activeTab, setActiveTab, lang, setLang, resetForm, t }
             resetForm();
           }} 
         />
+        <SidebarItem icon={History} label={t.history} active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
+        <SidebarItem icon={MessageSquare} label={t.aiAssistant} active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} />
       </nav>
 
       <div className="p-4 border-t border-zinc-800">

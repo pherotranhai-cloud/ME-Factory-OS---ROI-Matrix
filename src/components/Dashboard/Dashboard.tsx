@@ -92,7 +92,7 @@ export const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { re
   );
 };
 
-export const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
+export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any, refreshTrigger: number }) => {
   const [stats, setStats] = useState<any>({});
   const [history, setHistory] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -151,7 +151,7 @@ export const Dashboard = ({ lang, t }: { lang: Language, t: any }) => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [refreshTrigger]);
 
   const filteredReports = (reports || []).filter(r => {
     const matchesSearch = 
