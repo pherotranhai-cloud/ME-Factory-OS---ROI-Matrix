@@ -27,14 +27,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Helper for DB queries
+// Helper for DB queries (Đã thêm try-catch để log lỗi SQL chi tiết)
 const query = async (text: string, params: any[] = []) => {
   const pool = getPool();
   if (pool) {
-    const res = await pool.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
-    return res.rows;
+    try {
+      const res = await pool.query(text.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+      return res.rows;
+    } catch (dbErr) {
+      console.error("SQL Database Error:", dbErr);
+      throw dbErr; // Ném lỗi này ra cho các Route API bắt lấy
+    }
   }
-  throw new Error("Database not connected");
+  throw new Error("Database not connected. Check DATABASE_URL.");
 };
 
 const queryOne = async (text: string, params: any[] = []) => {
@@ -44,9 +49,6 @@ const queryOne = async (text: string, params: any[] = []) => {
 
 // API Routes
 app.post("/api/upload", async (req: any, res) => {
-  // Note: Netlify Functions have limits on file uploads. 
-  // For production, it's better to use Cloudinary's direct upload from the frontend.
-  // But for now, we'll proxy if it's small or just return error for large files.
   res.status(400).json({ error: "Use client-side upload for production" });
 });
 
@@ -61,8 +63,9 @@ app.get("/api/reports", async (req, res) => {
       ai_evaluation: typeof r.ai_evaluation === 'string' ? JSON.parse(r.ai_evaluation || 'null') : r.ai_evaluation,
       image_url: typeof r.image_url === 'string' ? JSON.parse(r.image_url || '[]') : r.image_url
     })));
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch reports" });
+  } catch (err: any) {
+    console.error("GET /api/reports Error:", err);
+    res.status(500).json({ error: "Failed to fetch reports", details: err.message || err.toString() });
   }
 });
 
@@ -74,8 +77,9 @@ app.post("/api/reports", async (req, res) => {
       [project_name, JSON.stringify(current_params), JSON.stringify(new_params), JSON.stringify(results), JSON.stringify(ai_evaluation), image_url]
     );
     res.json({ id: result[0]?.id });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to save report" });
+  } catch (err: any) {
+    console.error("POST /api/reports Error:", err);
+    res.status(500).json({ error: "Failed to save report", details: err.message || err.toString() });
   }
 });
 
@@ -95,8 +99,9 @@ app.get("/api/roi-reports", async (req, res) => {
       ...r,
       tags: typeof r.tags === 'string' ? JSON.parse(r.tags || "[]") : r.tags
     })));
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch ROI reports" });
+  } catch (err: any) {
+    console.error("GET /api/roi-reports Error:", err);
+    res.status(500).json({ error: "Failed to fetch ROI reports", details: err.message || err.toString() });
   }
 });
 
@@ -124,8 +129,9 @@ app.post("/api/roi-reports", async (req, res) => {
     ]);
 
     res.json({ id: result[0]?.id });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to save ROI report" });
+  } catch (err: any) {
+    console.error("POST /api/roi-reports Error:", err);
+    res.status(500).json({ error: "Failed to save ROI report", details: err.message || err.toString() });
   }
 });
 
@@ -142,8 +148,9 @@ app.patch("/api/roi-reports/:id/status", async (req, res) => {
       [id, report.status, status, changed_by, comment]
     );
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update status" });
+  } catch (err: any) {
+    console.error("PATCH /api/roi-reports/:id/status Error:", err);
+    res.status(500).json({ error: "Failed to update status", details: err.message || err.toString() });
   }
 });
 
@@ -156,8 +163,9 @@ app.get("/api/report-history", async (req, res) => {
       ORDER BY h.created_at DESC LIMIT 10
     `);
     res.json(history);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch history" });
+  } catch (err: any) {
+    console.error("GET /api/report-history Error:", err);
+    res.status(500).json({ error: "Failed to fetch history", details: err.message || err.toString() });
   }
 });
 
@@ -184,16 +192,17 @@ app.get("/api/dashboard-stats", async (req, res) => {
 
     res.json({
       topStats: {
-        totalInvestment: Number(stats.total_investment) || 0,
-        totalSavings: Number(stats.total_savings) || 0,
-        totalOutput: Number(stats.total_output) || 0,
-        avg_roi: Number(stats.avg_roi) || 0
+        totalInvestment: Number(stats?.total_investment) || 0,
+        totalSavings: Number(stats?.total_savings) || 0,
+        totalOutput: Number(stats?.total_output) || 0,
+        avg_roi: Number(stats?.avg_roi) || 0
       },
-      statusDistribution: distribution,
-      comparisonData: comparison
+      statusDistribution: distribution || [],
+      comparisonData: comparison || []
     });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  } catch (err: any) {
+    console.error("GET /api/dashboard-stats Error:", err);
+    res.status(500).json({ error: "Failed to fetch dashboard stats", details: err.message || err.toString() });
   }
 });
 
@@ -201,11 +210,12 @@ app.delete("/api/roi-reports/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await query("DELETE FROM report_history WHERE report_id = ?", [id]);
-    await query("DELETE FROM report_embeddings WHERE report_id = ?", [id]);
+    await query("DELETE FROM report_embeddings WHERE report_id = ?", [id]); // Bảng này có thể gây lỗi nếu chưa tạo
     await query("DELETE FROM roi_reports WHERE id = ?", [id]);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to delete report" });
+  } catch (err: any) {
+    console.error("DELETE /api/roi-reports/:id Error:", err);
+    res.status(500).json({ error: "Failed to delete report", details: err.message || err.toString() });
   }
 });
 
