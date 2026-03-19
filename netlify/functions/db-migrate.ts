@@ -11,7 +11,7 @@ export const handler: Handler = async (event) => {
   const sql = neon(process.env.DATABASE_URL!);
 
   try {
-    await sql(`
+    await sql`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name TEXT,
@@ -52,7 +52,7 @@ export const handler: Handler = async (event) => {
         comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    `);
+    `;
 
     return {
       statusCode: 200,

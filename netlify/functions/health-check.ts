@@ -12,7 +12,7 @@ export const handler: Handler = async () => {
   // 1. Check Database using HTTP
   try {
     const sql = neon(process.env.DATABASE_URL!);
-    await sql('SELECT 1');
+    await sql`SELECT 1`;
     results.database = 'connected';
   } catch (error: any) {
     results.database = `error: ${error.message}`;

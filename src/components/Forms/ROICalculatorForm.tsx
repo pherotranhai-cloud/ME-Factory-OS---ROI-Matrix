@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -106,9 +106,10 @@ interface ROICalculatorFormProps {
   uploadedImages: string[];
   setUploadedImages: (images: string[]) => void;
   initialData?: any;
+  onAnalyze?: () => void;
 }
 
-export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, initialData }) => {
+export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, initialData, onAnalyze }) => {
   const [roiStep, setRoiStep] = useState(1);
 
   React.useEffect(() => {
@@ -202,7 +203,7 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
           </motion.div>
         )}
 
-        <div className="mt-8 flex justify-between">
+        <div className="mt-8 flex justify-between items-center">
           <button 
             onClick={() => setRoiStep(Math.max(1, roiStep - 1))}
             disabled={roiStep === 1}
@@ -210,6 +211,17 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
           >
             {t.prev}
           </button>
+
+          {roiStep === 3 && onAnalyze && (
+            <button 
+              onClick={onAnalyze}
+              className="factory-btn bg-blue-600 text-white border-blue-500 hover:bg-blue-500 flex items-center gap-2"
+            >
+              <Sparkles size={16} />
+              AI Analyze
+            </button>
+          )}
+
           <button 
             onClick={() => setRoiStep(Math.min(3, roiStep + 1))}
             disabled={roiStep === 3}

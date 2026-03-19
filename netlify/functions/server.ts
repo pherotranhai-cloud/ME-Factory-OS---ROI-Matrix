@@ -339,4 +339,42 @@ app.post("/api/evaluate", async (req, res) => {
   }
 });
 
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { messages, contextData } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Gemini API Key not configured" });
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const systemInstruction = `You are a 'Senior Manufacturing Investment Consultant'. Analyze the following ROI data and provide professional, data-driven advice.
+    
+Context Data (Current ROI Calculation):
+${JSON.stringify(contextData || {}, null, 2)}`;
+
+    let formattedContents = [];
+    if (Array.isArray(messages)) {
+      formattedContents = messages.map((m: any) => ({
+        role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
+        parts: [{ text: m.content || m.text || '' }]
+      }));
+    } else if (typeof messages === 'string') {
+      formattedContents = [{ role: 'user', parts: [{ text: messages }] }];
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: formattedContents,
+      config: {
+        systemInstruction: systemInstruction,
+      }
+    });
+
+    res.json({ text: response.text });
+  } catch (err: any) {
+    console.error("Chat API Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export const handler = serverless(app);
