@@ -21,7 +21,9 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
   // Total Annual Cost = Labor + Maintenance + Consumables + Energy + Depreciation
   const manualTotalAnnualCost = manualAnnualLabor + manualAnnualEnergy + manualAnnualMaintenance + manualAnnualConsumables + manualAnnualDepreciation;
   // Cost per Pair = Total Annual Cost / Total Annual Output
-  const manualCostPerPair = manualActualGood > 0 ? manualTotalAnnualCost / manualActualGood : 0;
+  const manualOperatingCostPerPair = manualActualGood > 0 ? manualTotalAnnualCost / manualActualGood : 0;
+  const manualMaterialCostPerPair = currentMaterialCost;
+  const manualCostPerPair = manualOperatingCostPerPair + manualMaterialCostPerPair;
   const manualAnnualMaterial = manualActualGood * currentMaterialCost;
 
   // Machine Calculations (Proposed)
@@ -36,7 +38,9 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
   // Total Annual Cost = Labor + Maintenance + Consumables + Energy + Depreciation
   const machineTotalAnnualCost = machineAnnualLabor + machineAnnualEnergy + machineAnnualMaintenance + machineAnnualConsumables + machineAnnualDepreciation;
   // Cost per Pair = Total Annual Cost / Total Annual Output
-  const machineCostPerPair = machineActualGood > 0 ? machineTotalAnnualCost / machineActualGood : 0;
+  const machineOperatingCostPerPair = machineActualGood > 0 ? machineTotalAnnualCost / machineActualGood : 0;
+  const machineMaterialCostPerPair = proposedMaterialCost;
+  const machineCostPerPair = machineOperatingCostPerPair + machineMaterialCostPerPair;
   const machineAnnualMaterial = machineActualGood * proposedMaterialCost;
 
   // Savings for SAME OUTPUT (Target = Machine Capacity)
@@ -71,7 +75,9 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
       annualConsumables: manualAnnualConsumables,
       annualDepreciation: manualAnnualDepreciation,
       totalAnnualCost: manualTotalAnnualCost,
-      costPerPair: manualCostPerPair
+      costPerPair: manualCostPerPair,
+      materialCostPerPair: manualMaterialCostPerPair,
+      operatingCostPerPair: manualOperatingCostPerPair
     },
     machine: {
       annualCapacity: machineAnnualCapacity,
@@ -84,7 +90,9 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
       annualConsumables: machineAnnualConsumables,
       annualDepreciation: machineAnnualDepreciation,
       totalAnnualCost: machineTotalAnnualCost,
-      costPerPair: machineCostPerPair
+      costPerPair: machineCostPerPair,
+      materialCostPerPair: machineMaterialCostPerPair,
+      operatingCostPerPair: machineOperatingCostPerPair
     },
     savings: {
       manpowerSaving,

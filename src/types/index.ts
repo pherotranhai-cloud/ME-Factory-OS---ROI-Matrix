@@ -73,6 +73,8 @@ export interface ROIResults {
     annualDepreciation: number;
     totalAnnualCost: number;
     costPerPair: number;
+    materialCostPerPair: number;
+    operatingCostPerPair: number;
   };
   machine: {
     annualCapacity: number;
@@ -86,6 +88,8 @@ export interface ROIResults {
     annualDepreciation: number;
     totalAnnualCost: number;
     costPerPair: number;
+    materialCostPerPair: number;
+    operatingCostPerPair: number;
   };
   savings: {
     manpowerSaving: number;

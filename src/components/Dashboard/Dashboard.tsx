@@ -224,10 +224,10 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
       {/* Top Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Approved Investment', value: `$${(stats?.topStats?.totalInvestment || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, icon: DollarSign, color: 'emerald' },
-          { label: 'Global FOB Impact', value: `-$${(stats?.topStats?.totalFOBSavings || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}`, icon: TrendingUp, color: 'emerald' },
-          { label: 'Average ROI', value: `${(stats?.topStats?.avgROI || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} Months`, icon: Clock, color: 'amber' },
-          { label: 'Active Projects', value: stats?.topStats?.activeProjects || 0, icon: Activity, color: 'blue' },
+          { label: t.totalApprovedInvestment || 'Total Approved Investment', value: `$${(stats?.topStats?.totalInvestment || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, icon: DollarSign, color: 'emerald' },
+          { label: t.globalFobImpact || 'Global FOB Impact', value: `-$${(stats?.topStats?.totalFOBSavings || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}`, icon: TrendingUp, color: 'emerald' },
+          { label: t.averageRoi || 'Average ROI', value: `${(stats?.topStats?.avgROI || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${t.months || 'Months'}`, icon: Clock, color: 'amber' },
+          { label: t.activeProjects || 'Active Projects', value: stats?.topStats?.activeProjects || 0, icon: Activity, color: 'blue' },
         ].map((stat, i) => (
           <div key={i} className="bg-zinc-900/40 backdrop-blur-sm border border-zinc-800 p-6 rounded-2xl shadow-lg">
             <div className="flex justify-between items-start mb-4">
@@ -248,9 +248,9 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
             <BarChart3 size={16} className="text-emerald-500" />
-            Investment vs Savings
+            {t.investmentVsSavings || 'Investment vs Savings'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
             <BarChart data={investmentVsSaving}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
               <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
@@ -259,8 +259,8 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
                 contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
                 formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               />
-              <Bar dataKey="investment" name="Investment" fill="#f59e0b" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="savings" name="Savings" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#f59e0b" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -269,9 +269,9 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
             <PieChartIcon size={16} className="text-blue-500" />
-            Project Status
+            {t.projectStatus || 'Project Status'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
             <PieChart>
               <Pie data={statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label isAnimationActive={false}>
                 {statusDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
@@ -286,9 +286,9 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
             <PieChartIcon size={16} className="text-violet-500" />
-            Investment by Vendor
+            {t.investmentByVendor || 'Investment by Vendor'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
             <PieChart>
               <Pie data={vendorInvestment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} label isAnimationActive={false}>
                 {vendorInvestment.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
@@ -303,9 +303,9 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
             <BarChart3 size={16} className="text-amber-500" />
-            ROI Distribution (Months)
+            {t.roiDistribution || 'ROI Distribution (Months)'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
             <BarChart data={roiDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
               <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
@@ -314,7 +314,7 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
                 contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
                 formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               />
-              <Bar dataKey="roi" name="ROI (Months)" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -325,14 +325,14 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
         <div className="p-6 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
             <FilePlus size={16} className="text-zinc-400" />
-            CAPEX Projects
+            {t.capexProjects || 'CAPEX Projects'}
           </h3>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
               <input 
                 type="text" 
-                placeholder="Search projects..." 
+                placeholder={t.searchProjects || "Search projects..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
@@ -343,12 +343,12 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-zinc-300 focus:outline-none focus:border-emerald-500 transition-colors"
             >
-              <option value="All">All Status</option>
-              <option value="Draft">Draft</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Implemented">Implemented</option>
-              <option value="Dropped">Dropped</option>
+              <option value="All">{t.allStatus || 'All Status'}</option>
+              <option value="Draft">{t.draft || 'Draft'}</option>
+              <option value="Pending">{t.pending || 'Pending'}</option>
+              <option value="Approved">{t.approved || 'Approved'}</option>
+              <option value="Implemented">{t.implemented || 'Implemented'}</option>
+              <option value="Dropped">{t.dropped || 'Dropped'}</option>
             </select>
           </div>
         </div>
@@ -357,12 +357,12 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-950/50">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Project ID / Machine</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">Investment</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">FOB Impact</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">ROI</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800 text-right">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.projectIdMachine || 'Project ID / Machine'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.status || 'Status'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.investment || 'Investment'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.fobImpact || 'FOB Impact'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.roi || 'ROI'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800 text-right">{t.actions || 'Actions'}</th>
               </tr>
             </thead>
             <tbody>
@@ -417,7 +417,7 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
               {filteredReports.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 text-sm font-bold uppercase tracking-widest">
-                    No projects found
+                    {t.noProjectsFound || 'No projects found'}
                   </td>
                 </tr>
               )}

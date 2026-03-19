@@ -179,6 +179,7 @@ export default function App() {
                   uploadedImages={uploadedImages} 
                   setUploadedImages={setUploadedImages} 
                   initialData={editingReportData}
+                  advancedResults={advancedResults}
                   onAnalyze={() => {
                     setAiPrompt(`Tôi đang xem xét dự án ${params.equipmentName || 'này'}. Dữ liệu ROI: ${JSON.stringify({ params, advancedResults })}. Cho tôi xin đánh giá nhanh, trực diện theo góc nhìn quản lý nhà máy.`);
                     setActiveTab('ai');

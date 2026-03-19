@@ -42,3 +42,15 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #444;
 }
+
+/* Light Mode Filter */
+html.light-mode {
+  filter: invert(1) hue-rotate(180deg);
+  background: #f5f5f5;
+}
+html.light-mode img,
+html.light-mode video,
+html.light-mode iframe,
+html.light-mode .no-invert {
+  filter: invert(1) hue-rotate(180deg);
+}

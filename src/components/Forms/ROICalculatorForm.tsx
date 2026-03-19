@@ -28,7 +28,7 @@ const InputField = ({ label, value, onChange, type = "number", suffix, className
   </div>
 );
 
-const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs: string[]) => void }) => {
+const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (imgs: string[]) => void, t: any }) => {
   const [uploading, setUploading] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +74,7 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
 
   return (
     <div className="space-y-4">
-      <label className="factory-label">Machine Photos (Max 3)</label>
+      <label className="factory-label">{t.machinePhotos || 'Machine Photos (Max 3)'}</label>
       <div className="grid grid-cols-3 gap-2">
         {images?.map((url, i) => (
           <div key={i} className="relative aspect-square factory-border overflow-hidden group">
@@ -91,7 +91,7 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
           <label className="aspect-square factory-border flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-900 transition-colors border-dashed">
             <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
             <Upload size={16} className={uploading ? "animate-bounce text-emerald-500" : "text-zinc-500"} />
-            <span className="text-[8px] font-bold uppercase mt-2 text-zinc-600">{uploading ? 'Uploading...' : 'Add Photo'}</span>
+            <span className="text-[8px] font-bold uppercase mt-2 text-zinc-600">{uploading ? (t.uploading || 'Uploading...') : (t.addPhoto || 'Add Photo')}</span>
           </label>
         )}
       </div>
@@ -99,7 +99,7 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
   );
 };
 
-const MaterialTable = ({ materials, setMaterials, title }: { materials: MaterialItem[], setMaterials: (m: MaterialItem[]) => void, title: string }) => {
+const MaterialTable = ({ materials, setMaterials, title, t }: { materials: MaterialItem[], setMaterials: (m: MaterialItem[]) => void, title: string, t: any }) => {
   const addRow = () => {
     setMaterials([...materials, { id: Math.random().toString(), type: '', description: '', supplier: '', uom: '', usage: 0, loss: 0, fob: 0 }]);
   };
@@ -119,7 +119,7 @@ const MaterialTable = ({ materials, setMaterials, title }: { materials: Material
       <div className="flex justify-between items-center">
         <h3 className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">{title}</h3>
         <button onClick={addRow} className="flex items-center gap-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-300 transition-colors">
-          <Plus size={12} /> Add Material
+          <Plus size={12} /> {t.addMaterial || 'Add Material'}
         </button>
       </div>
       
@@ -127,14 +127,14 @@ const MaterialTable = ({ materials, setMaterials, title }: { materials: Material
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-zinc-800 text-[10px] text-zinc-500 uppercase tracking-wider">
-              <th className="p-2 font-medium">Type</th>
-              <th className="p-2 font-medium">Description</th>
-              <th className="p-2 font-medium">Supplier</th>
-              <th className="p-2 font-medium">UOM</th>
-              <th className="p-2 font-medium">Usage</th>
-              <th className="p-2 font-medium">Loss %</th>
-              <th className="p-2 font-medium">FOB ($)</th>
-              <th className="p-2 font-medium text-right">Cost/Pr</th>
+              <th className="p-2 font-medium">{t.type || 'Type'}</th>
+              <th className="p-2 font-medium">{t.description || 'Description'}</th>
+              <th className="p-2 font-medium">{t.supplier || 'Supplier'}</th>
+              <th className="p-2 font-medium">{t.uom || 'UOM'}</th>
+              <th className="p-2 font-medium">{t.usage || 'Usage'}</th>
+              <th className="p-2 font-medium">{t.loss || 'Loss %'}</th>
+              <th className="p-2 font-medium">{t.fob || 'FOB ($)'}</th>
+              <th className="p-2 font-medium text-right">{t.costPerPr || 'Cost/Pr'}</th>
               <th className="p-2"></th>
             </tr>
           </thead>
@@ -160,7 +160,7 @@ const MaterialTable = ({ materials, setMaterials, title }: { materials: Material
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={7} className="p-2 text-right text-[10px] font-bold uppercase text-zinc-500">Total Cost/Pair</td>
+              <td colSpan={7} className="p-2 text-right text-[10px] font-bold uppercase text-zinc-500">{t.totalCostPair || 'Total Cost/Pair'}</td>
               <td className="p-2 text-right text-sm font-bold font-mono text-emerald-400">${totalCost.toFixed(4)}</td>
               <td></td>
             </tr>
@@ -178,10 +178,11 @@ interface ROICalculatorFormProps {
   uploadedImages: string[];
   setUploadedImages: (images: string[]) => void;
   initialData?: any;
+  advancedResults?: any;
   onAnalyze?: () => void;
 }
 
-export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, initialData, onAnalyze }) => {
+export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, initialData, advancedResults, onAnalyze }) => {
   const [roiStep, setRoiStep] = useState(1);
 
   React.useEffect(() => {
@@ -197,7 +198,7 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
   return (
     <div className="space-y-6">
       <div className="flex gap-2 mb-4">
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <button
             key={s}
             onClick={() => setRoiStep(s)}
@@ -215,13 +216,13 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
         {roiStep === 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-6">{t.generalInfo}</h2>
-            <InputField label="Shoe Model" type="text" value={params.shoeModel} onChange={(v: any) => setParams({...params, shoeModel: v})} />
-            <InputField label="Date" type="date" value={params.date} onChange={(v: any) => setParams({...params, date: v})} />
-            <InputField label="Equipment Name" type="text" value={params.equipmentName} onChange={(v: any) => setParams({...params, equipmentName: v})} />
-            <InputField label="Machine Type" type="text" value={params.machineType} onChange={(v: any) => setParams({...params, machineType: v})} />
-            <InputField label="Brand" type="text" value={params.brand} onChange={(v: any) => setParams({...params, brand: v})} />
-            <InputField label="Scope of Work" type="text" value={params.scopeOfWork} onChange={(v: any) => setParams({...params, scopeOfWork: v})} />
-            <InputField label="Machine Quantity" type="number" value={params.machineQuantity} onChange={(v: any) => setParams({...params, machineQuantity: v})} />
+            <InputField label={t.shoeModel} type="text" value={params.shoeModel} onChange={(v: any) => setParams({...params, shoeModel: v})} />
+            <InputField label={t.date} type="date" value={params.date} onChange={(v: any) => setParams({...params, date: v})} />
+            <InputField label={t.equipment} type="text" value={params.equipmentName} onChange={(v: any) => setParams({...params, equipmentName: v})} />
+            <InputField label={t.machineType} type="text" value={params.machineType} onChange={(v: any) => setParams({...params, machineType: v})} />
+            <InputField label={t.brand} type="text" value={params.brand} onChange={(v: any) => setParams({...params, brand: v})} />
+            <InputField label={t.scopeOfWork} type="text" value={params.scopeOfWork} onChange={(v: any) => setParams({...params, scopeOfWork: v})} />
+            <InputField label={t.machineQuantity} type="number" value={params.machineQuantity} onChange={(v: any) => setParams({...params, machineQuantity: v})} />
           </motion.div>
         )}
 
@@ -232,11 +233,11 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
             <div className="grid grid-cols-2 gap-6">
               {/* Current State Column */}
               <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2 mb-4">Current State</h3>
-                <InputField label="Power Supply" type="text" value={params.currentPowerSupplyV} onChange={(v: any) => setParams({...params, currentPowerSupplyV: v})} suffix="V" />
-                <InputField label="Power Consumption" value={params.currentPowerConsumptionKW} onChange={(v: any) => setParams({...params, currentPowerConsumptionKW: v})} suffix="kW" />
-                <InputField label="Speed" value={params.currentSpeedSPrs} onChange={(v: any) => setParams({...params, currentSpeedSPrs: v})} suffix="s/prs" />
-                <InputField label="Unit Price (Total Cost)" value={params.currentUnitPrice} onChange={(v: any) => setParams({...params, currentUnitPrice: v})} suffix="USD" />
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2 mb-4">{t.manual}</h3>
+                <InputField label={t.powerSupply} type="text" value={params.currentPowerSupplyV} onChange={(v: any) => setParams({...params, currentPowerSupplyV: v})} suffix="V" />
+                <InputField label={t.powerConsumption} value={params.currentPowerConsumptionKW} onChange={(v: any) => setParams({...params, currentPowerConsumptionKW: v})} suffix="kW" />
+                <InputField label={t.speed} value={params.currentSpeedSPrs} onChange={(v: any) => setParams({...params, currentSpeedSPrs: v})} suffix="s/prs" />
+                <InputField label={t.unitPrice} value={params.currentUnitPrice} onChange={(v: any) => setParams({...params, currentUnitPrice: v})} suffix="USD" />
                 <InputField label={t.maintenanceCost} value={params.currentMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, currentMaintenanceCostPerYear: v})} suffix="USD/Yr" />
                 <InputField label={t.consumablesCost} value={params.currentConsumablesCostPerYear} onChange={(v: any) => setParams({...params, currentConsumablesCostPerYear: v})} suffix="USD/Yr" />
                 <InputField label={t.depreciation} value={params.currentDepreciationYears} onChange={(v: any) => setParams({...params, currentDepreciationYears: v})} suffix="Years" />
@@ -244,11 +245,11 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
 
               {/* Proposed State Column */}
               <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2 mb-4">Proposed State</h3>
-                <InputField label="Power Supply" type="text" value={params.proposedPowerSupplyV} onChange={(v: any) => setParams({...params, proposedPowerSupplyV: v})} suffix="V" />
-                <InputField label="Power Consumption" value={params.proposedPowerConsumptionKW} onChange={(v: any) => setParams({...params, proposedPowerConsumptionKW: v})} suffix="kW" />
-                <InputField label="Speed" value={params.proposedSpeedSPrs} onChange={(v: any) => setParams({...params, proposedSpeedSPrs: v})} suffix="s/prs" />
-                <InputField label="Unit Price (Total Cost)" value={params.proposedUnitPrice} onChange={(v: any) => setParams({...params, proposedUnitPrice: v})} suffix="USD" />
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2 mb-4">{t.machine}</h3>
+                <InputField label={t.powerSupply} type="text" value={params.proposedPowerSupplyV} onChange={(v: any) => setParams({...params, proposedPowerSupplyV: v})} suffix="V" />
+                <InputField label={t.powerConsumption} value={params.proposedPowerConsumptionKW} onChange={(v: any) => setParams({...params, proposedPowerConsumptionKW: v})} suffix="kW" />
+                <InputField label={t.speed} value={params.proposedSpeedSPrs} onChange={(v: any) => setParams({...params, proposedSpeedSPrs: v})} suffix="s/prs" />
+                <InputField label={t.unitPrice} value={params.proposedUnitPrice} onChange={(v: any) => setParams({...params, proposedUnitPrice: v})} suffix="USD" />
                 <InputField label={t.maintenanceCost} value={params.proposedMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, proposedMaintenanceCostPerYear: v})} suffix="USD/Yr" />
                 <InputField label={t.consumablesCost} value={params.proposedConsumablesCostPerYear} onChange={(v: any) => setParams({...params, proposedConsumablesCostPerYear: v})} suffix="USD/Yr" />
                 <InputField label={t.depreciation} value={params.proposedDepreciationYears} onChange={(v: any) => setParams({...params, proposedDepreciationYears: v})} suffix="Years" />
@@ -256,7 +257,7 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
             </div>
 
             <div className="pt-4 border-t border-zinc-800">
-              <ImageUpload images={uploadedImages} setImages={setUploadedImages} />
+              <ImageUpload images={uploadedImages} setImages={setUploadedImages} t={t} />
             </div>
           </motion.div>
         )}
@@ -268,55 +269,93 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
             {/* IE & Quality Data Matrix */}
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-6 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">Current State</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-bold text-zinc-500">IE Data</h4>
-                  <InputField label="Cycle Time (CT)" value={params.currentCT} onChange={(v: any) => setParams({...params, currentCT: v})} suffix="s" />
-                  <InputField label="Pieces Per Hour (PPH)" value={params.currentPPH} onChange={(v: any) => setParams({...params, currentPPH: v})} suffix="prs/hr" />
-                  <InputField label="Manpower" value={params.currentManpower} onChange={(v: any) => setParams({...params, currentManpower: v})} suffix="prs" />
+                  <h4 className="text-[10px] font-bold text-zinc-500">{t.ieData || 'IE Data'}</h4>
+                  <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.currentCT} onChange={(v: any) => setParams({...params, currentCT: v, currentPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" />
+                  <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.currentPPH} onChange={(v: any) => setParams({...params, currentPPH: v})} suffix="prs/hr" />
+                  <InputField label={t.manpowerDemand} value={params.currentManpower} onChange={(v: any) => setParams({...params, currentManpower: v})} suffix="prs" />
                 </div>
                 <div className="space-y-4 pt-4 border-t border-zinc-800/50">
-                  <h4 className="text-[10px] font-bold text-zinc-500">Quality Data</h4>
-                  <InputField label="RFT %" value={params.currentRFT} onChange={(v: any) => setParams({...params, currentRFT: v})} suffix="%" />
-                  <InputField label="Total Defect Rate" value={params.currentDefectRate} onChange={(v: any) => setParams({...params, currentDefectRate: v})} suffix="%" />
+                  <h4 className="text-[10px] font-bold text-zinc-500">{t.qualityData || 'Quality Data'}</h4>
+                  <InputField label={t.rft || 'RFT %'} value={params.currentRFT} onChange={(v: any) => setParams({...params, currentRFT: v})} suffix="%" />
+                  <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.currentDefectRate} onChange={(v: any) => setParams({...params, currentDefectRate: v})} suffix="%" />
                 </div>
               </div>
 
               <div className="space-y-6 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">Proposed State</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-bold text-emerald-600/70">IE Data</h4>
-                  <InputField label="Cycle Time (CT)" value={params.proposedCT} onChange={(v: any) => setParams({...params, proposedCT: v})} suffix="s" />
-                  <InputField label="Pieces Per Hour (PPH)" value={params.proposedPPH} onChange={(v: any) => setParams({...params, proposedPPH: v})} suffix="prs/hr" />
-                  <InputField label="Manpower" value={params.proposedManpower} onChange={(v: any) => setParams({...params, proposedManpower: v})} suffix="prs" />
+                  <h4 className="text-[10px] font-bold text-emerald-600/70">{t.ieData || 'IE Data'}</h4>
+                  <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.proposedCT} onChange={(v: any) => setParams({...params, proposedCT: v, proposedPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" />
+                  <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.proposedPPH} onChange={(v: any) => setParams({...params, proposedPPH: v})} suffix="prs/hr" />
+                  <InputField label={t.manpowerDemand} value={params.proposedManpower} onChange={(v: any) => setParams({...params, proposedManpower: v})} suffix="prs" />
                 </div>
                 <div className="space-y-4 pt-4 border-t border-emerald-900/30">
-                  <h4 className="text-[10px] font-bold text-emerald-600/70">Quality Data</h4>
-                  <InputField label="RFT %" value={params.proposedRFT} onChange={(v: any) => setParams({...params, proposedRFT: v})} suffix="%" />
-                  <InputField label="Total Defect Rate" value={params.proposedDefectRate} onChange={(v: any) => setParams({...params, proposedDefectRate: v})} suffix="%" />
+                  <h4 className="text-[10px] font-bold text-emerald-600/70">{t.qualityData || 'Quality Data'}</h4>
+                  <InputField label={t.rft || 'RFT %'} value={params.proposedRFT} onChange={(v: any) => setParams({...params, proposedRFT: v})} suffix="%" />
+                  <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.proposedDefectRate} onChange={(v: any) => setParams({...params, proposedDefectRate: v})} suffix="%" />
                 </div>
               </div>
             </div>
 
             {/* Dynamic Material Cost Tables */}
             <div className="space-y-6 pt-4 border-t border-zinc-800">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500">Material Cost Breakdown</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500">{t.materialCostBreakdown || 'Material Cost Breakdown'}</h3>
               <MaterialTable 
-                title="Current Material Cost" 
+                title={t.manual} 
                 materials={params.currentMaterials || []} 
                 setMaterials={(m) => setParams({...params, currentMaterials: m})} 
+                t={t}
               />
               <MaterialTable 
-                title="Proposed Material Cost" 
+                title={t.machine} 
                 materials={params.proposedMaterials || []} 
                 setMaterials={(m) => setParams({...params, proposedMaterials: m})} 
+                t={t}
               />
             </div>
 
             <div className="pt-4 border-t border-zinc-800 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Working Hours / Day" value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" />
-                <InputField label="Local Labor Cost" value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" />
+                <InputField label={t.workingHoursPerDay || 'Working Hours / Day'} value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" />
+                <InputField label={t.localLaborCost || 'Local Labor Cost'} value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {roiStep === 4 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-rose-500 mb-6">{t.financialMetrics || 'Financial Metrics'}</h2>
+            
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.manual.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualMaintenance}</span><span className="font-mono">${params.currentMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualConsumables}</span><span className="font-mono">${params.currentConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualDepreciation}</span><span className="font-mono">${(params.currentUnitPrice / (params.currentDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.manual.materialCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.manual.operatingCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-zinc-800"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.manual.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.manual.costPerPair?.toFixed(4) || 0}</span></div>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.machine.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualMaintenance}</span><span className="font-mono">${params.proposedMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualConsumables}</span><span className="font-mono">${params.proposedConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualDepreciation}</span><span className="font-mono">${(params.proposedUnitPrice / (params.proposedDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.machine.materialCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.machine.operatingCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-emerald-900/30"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.machine.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.machine.costPerPair?.toFixed(4) || 0}</span></div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -332,8 +371,8 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
           </button>
 
           <button 
-            onClick={() => setRoiStep(Math.min(3, roiStep + 1))}
-            disabled={roiStep === 3}
+            onClick={() => setRoiStep(Math.min(4, roiStep + 1))}
+            disabled={roiStep === 4}
             className="factory-btn bg-emerald-600 text-white border-emerald-500 disabled:opacity-30"
           >
             {t.next}
