@@ -212,16 +212,6 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
             {t.prev}
           </button>
 
-          {roiStep === 3 && onAnalyze && (
-            <button 
-              onClick={onAnalyze}
-              className="factory-btn bg-blue-600 text-white border-blue-500 hover:bg-blue-500 flex items-center gap-2"
-            >
-              <Sparkles size={16} />
-              AI Analyze
-            </button>
-          )}
-
           <button 
             onClick={() => setRoiStep(Math.min(3, roiStep + 1))}
             disabled={roiStep === 3}

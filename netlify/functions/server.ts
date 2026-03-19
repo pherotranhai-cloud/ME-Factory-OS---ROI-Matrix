@@ -345,10 +345,24 @@ app.post("/api/chat", async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "Gemini API Key not configured" });
 
+    const pool = getPool();
+    let historyData = [];
+    if (pool) {
+      try {
+        const historyRes = await pool.query("SELECT * FROM roi_reports ORDER BY created_at DESC LIMIT 10");
+        historyData = historyRes.rows;
+      } catch (e) {
+        console.error("Failed to fetch history for AI context", e);
+      }
+    }
+
     const ai = new GoogleGenAI({ apiKey });
     
-    const systemInstruction = `You are a 'Senior Manufacturing Investment Consultant'. Analyze the following ROI data and provide professional, data-driven advice.
+    const systemInstruction = `You are a 'Senior Manufacturing Investment Consultant' and a factory optimization expert. Don't just repeat numbers; explain WHY this investment is good or bad (e.g., 'This machine pays for itself in less than 6 months, which is world-class efficiency').
     
+You have access to the last 10 CAPEX reports. If the user asks about 'previous projects' or 'history', refer to this data: 
+${JSON.stringify(historyData, null, 2)}
+
 Context Data (Current ROI Calculation):
 ${JSON.stringify(contextData || {}, null, 2)}`;
 

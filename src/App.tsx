@@ -29,6 +29,7 @@ export default function App() {
   } = useAppState();
 
   const [editingReportData, setEditingReportData] = React.useState<any>(null);
+  const [aiPrompt, setAiPrompt] = React.useState('');
 
   const t = TRANSLATIONS[lang];
 
@@ -153,12 +154,16 @@ export default function App() {
           handleEvaluate={handleEvaluate} 
           handleExportPDF={handleExportPDF} 
           handleSave={handleSave} 
+          onAnalyze={() => {
+            setAiPrompt(`I am analyzing the ${params.equipmentName || 'current'} project. Here is the context: ${JSON.stringify({ params, advancedResults })}. Please provide a strategic executive summary.`);
+            setActiveTab('ai');
+          }}
         />
 
         <div className="p-8">
           {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} />}
           {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={(report) => { setEditingReportData(report); setActiveTab('roi'); }} />}
-          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} />}
+          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} />}
           {activeTab === 'roi' && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-5">
@@ -169,6 +174,10 @@ export default function App() {
                   uploadedImages={uploadedImages} 
                   setUploadedImages={setUploadedImages} 
                   initialData={editingReportData}
+                  onAnalyze={() => {
+                    setAiPrompt(`I am analyzing the ${params.equipmentName || 'current'} project. Here is the context: ${JSON.stringify({ params, advancedResults })}. Please provide a strategic executive summary.`);
+                    setActiveTab('ai');
+                  }}
                 />
               </div>
               <div className="lg:col-span-7 space-y-6">
