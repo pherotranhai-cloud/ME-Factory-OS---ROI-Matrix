@@ -1,5 +1,16 @@
 export type Language = 'VI' | 'EN' | 'ZH-CN' | 'ZH-TW' | 'ID' | 'MY';
 
+export interface MaterialItem {
+  id: string;
+  type: string;
+  description: string;
+  supplier: string;
+  uom: string;
+  usage: number;
+  loss: number;
+  fob: number;
+}
+
 export interface ROIParams {
   // General Info
   shoeModel: string;
@@ -10,32 +21,43 @@ export interface ROIParams {
   scopeOfWork: string;
   machineQuantity: number;
   
-  // Technical Specs
-  powerSupplyV: string;
-  powerConsumptionKW: number;
-  speedSPrs: number;
-  unitPrice: number;
+  // Technical Specs (Current vs Proposed)
+  currentPowerSupplyV: string;
+  proposedPowerSupplyV: string;
+  currentPowerConsumptionKW: number;
+  proposedPowerConsumptionKW: number;
+  currentSpeedSPrs: number;
+  proposedSpeedSPrs: number;
+  currentUnitPrice: number;
+  proposedUnitPrice: number;
+  currentMaintenanceCostPerYear: number;
+  proposedMaintenanceCostPerYear: number;
+  currentConsumablesCostPerYear: number;
+  proposedConsumablesCostPerYear: number;
+  currentDepreciationYears: number;
+  proposedDepreciationYears: number;
   
-  // Production Data - Manual
-  manualCapacityPerHour: number;
-  manualDefectiveRate: number;
-  manualManpower: number;
+  // Production Data - IE Data
+  currentCT: number;
+  proposedCT: number;
+  currentPPH: number;
+  proposedPPH: number;
+  currentManpower: number;
+  proposedManpower: number;
   
-  // Production Data - Machine
-  machineCapacityPerHour: number;
-  machineDefectiveRate: number;
-  machineManpower: number;
+  // Production Data - Quality Data
+  currentRFT: number;
+  proposedRFT: number;
+  currentDefectRate: number;
+  proposedDefectRate: number;
+  
+  // Production Data - Material Cost Tables
+  currentMaterials: MaterialItem[];
+  proposedMaterials: MaterialItem[];
   
   // Shared
-  currentMaterialCost: number;
-  proposedMaterialCost: number;
   workingHoursPerDay: number;
   localLaborCost: number; // Salary
-  
-  // New Fields
-  maintenanceCostPerYear: number;
-  consumablesCostPerYear: number;
-  depreciationYears: number;
 }
 
 export interface ROIResults {

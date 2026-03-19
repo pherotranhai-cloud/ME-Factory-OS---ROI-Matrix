@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
-import { Upload, X, Sparkles } from 'lucide-react';
+import { Upload, X, Sparkles, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ROIParams } from '../../types';
+import { ROIParams, MaterialItem } from '../../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const InputField = ({ label, value, onChange, type = "number", suffix }: any) => (
-  <div className="mb-4">
-    <label className="factory-label">{label}</label>
+const InputField = ({ label, value, onChange, type = "number", suffix, className = "" }: any) => (
+  <div className={cn("mb-4", className)}>
+    <label className="factory-label text-[10px]">{label}</label>
     <div className="relative">
       <input
         type={type}
         value={value ?? ''}
         onChange={(e) => onChange(type === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
-        className="factory-input w-full"
+        className="factory-input w-full text-sm py-1.5"
       />
       {suffix && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 font-mono">
@@ -99,6 +99,78 @@ const ImageUpload = ({ images, setImages }: { images: string[], setImages: (imgs
   );
 };
 
+const MaterialTable = ({ materials, setMaterials, title }: { materials: MaterialItem[], setMaterials: (m: MaterialItem[]) => void, title: string }) => {
+  const addRow = () => {
+    setMaterials([...materials, { id: Math.random().toString(), type: '', description: '', supplier: '', uom: '', usage: 0, loss: 0, fob: 0 }]);
+  };
+
+  const updateRow = (id: string, field: keyof MaterialItem, value: any) => {
+    setMaterials(materials.map(m => m.id === id ? { ...m, [field]: value } : m));
+  };
+
+  const removeRow = (id: string) => {
+    setMaterials(materials.filter(m => m.id !== id));
+  };
+
+  const totalCost = materials.reduce((sum, m) => sum + (m.usage * m.fob * (1 + m.loss / 100)), 0);
+
+  return (
+    <div className="space-y-4 bg-zinc-900/30 p-4 rounded border border-zinc-800">
+      <div className="flex justify-between items-center">
+        <h3 className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">{title}</h3>
+        <button onClick={addRow} className="flex items-center gap-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-300 transition-colors">
+          <Plus size={12} /> Add Material
+        </button>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-zinc-800 text-[10px] text-zinc-500 uppercase tracking-wider">
+              <th className="p-2 font-medium">Type</th>
+              <th className="p-2 font-medium">Description</th>
+              <th className="p-2 font-medium">Supplier</th>
+              <th className="p-2 font-medium">UOM</th>
+              <th className="p-2 font-medium">Usage</th>
+              <th className="p-2 font-medium">Loss %</th>
+              <th className="p-2 font-medium">FOB ($)</th>
+              <th className="p-2 font-medium text-right">Cost/Pr</th>
+              <th className="p-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {materials.map(m => {
+              const cost = m.usage * m.fob * (1 + m.loss / 100);
+              return (
+                <tr key={m.id} className="border-b border-zinc-800/50">
+                  <td className="p-1"><input type="text" value={m.type} onChange={e => updateRow(m.id, 'type', e.target.value)} className="w-full bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-1"><input type="text" value={m.description} onChange={e => updateRow(m.id, 'description', e.target.value)} className="w-full bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-1"><input type="text" value={m.supplier} onChange={e => updateRow(m.id, 'supplier', e.target.value)} className="w-full bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-1"><input type="text" value={m.uom} onChange={e => updateRow(m.id, 'uom', e.target.value)} className="w-20 bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-1"><input type="number" value={m.usage} onChange={e => updateRow(m.id, 'usage', parseFloat(e.target.value) || 0)} className="w-20 bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-1"><input type="number" value={m.loss} onChange={e => updateRow(m.id, 'loss', parseFloat(e.target.value) || 0)} className="w-20 bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-1"><input type="number" value={m.fob} onChange={e => updateRow(m.id, 'fob', parseFloat(e.target.value) || 0)} className="w-20 bg-transparent border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-emerald-500 outline-none" /></td>
+                  <td className="p-2 text-right text-xs font-mono text-emerald-400">${cost.toFixed(4)}</td>
+                  <td className="p-1 text-right">
+                    <button onClick={() => removeRow(m.id)} className="text-zinc-600 hover:text-red-500 p-1"><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={7} className="p-2 text-right text-[10px] font-bold uppercase text-zinc-500">Total Cost/Pair</td>
+              <td className="p-2 text-right text-sm font-bold font-mono text-emerald-400">${totalCost.toFixed(4)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 interface ROICalculatorFormProps {
   t: any;
   params: ROIParams;
@@ -154,18 +226,34 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
         )}
 
         {roiStep === 2 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <h2 className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-6">{t.techSpecs}</h2>
-            <InputField label="Power Supply" type="text" value={params.powerSupplyV} onChange={(v: any) => setParams({...params, powerSupplyV: v})} suffix="V" />
-            <InputField label="Power Consumption" value={params.powerConsumptionKW} onChange={(v: any) => setParams({...params, powerConsumptionKW: v})} suffix="kW" />
-            <InputField label="Speed" value={params.speedSPrs} onChange={(v: any) => setParams({...params, speedSPrs: v})} suffix="s/prs" />
-            <InputField label="Unit Price (Total Cost)" value={params.unitPrice} onChange={(v: any) => setParams({...params, unitPrice: v})} suffix="USD" />
             
-            <div className="grid grid-cols-2 gap-4">
-              <InputField label={t.maintenanceCost} value={params.maintenanceCostPerYear} onChange={(v: any) => setParams({...params, maintenanceCostPerYear: v})} suffix="USD/Yr" />
-              <InputField label={t.consumablesCost} value={params.consumablesCostPerYear} onChange={(v: any) => setParams({...params, consumablesCostPerYear: v})} suffix="USD/Yr" />
+            <div className="grid grid-cols-2 gap-6">
+              {/* Current State Column */}
+              <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2 mb-4">Current State</h3>
+                <InputField label="Power Supply" type="text" value={params.currentPowerSupplyV} onChange={(v: any) => setParams({...params, currentPowerSupplyV: v})} suffix="V" />
+                <InputField label="Power Consumption" value={params.currentPowerConsumptionKW} onChange={(v: any) => setParams({...params, currentPowerConsumptionKW: v})} suffix="kW" />
+                <InputField label="Speed" value={params.currentSpeedSPrs} onChange={(v: any) => setParams({...params, currentSpeedSPrs: v})} suffix="s/prs" />
+                <InputField label="Unit Price (Total Cost)" value={params.currentUnitPrice} onChange={(v: any) => setParams({...params, currentUnitPrice: v})} suffix="USD" />
+                <InputField label={t.maintenanceCost} value={params.currentMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, currentMaintenanceCostPerYear: v})} suffix="USD/Yr" />
+                <InputField label={t.consumablesCost} value={params.currentConsumablesCostPerYear} onChange={(v: any) => setParams({...params, currentConsumablesCostPerYear: v})} suffix="USD/Yr" />
+                <InputField label={t.depreciation} value={params.currentDepreciationYears} onChange={(v: any) => setParams({...params, currentDepreciationYears: v})} suffix="Years" />
+              </div>
+
+              {/* Proposed State Column */}
+              <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2 mb-4">Proposed State</h3>
+                <InputField label="Power Supply" type="text" value={params.proposedPowerSupplyV} onChange={(v: any) => setParams({...params, proposedPowerSupplyV: v})} suffix="V" />
+                <InputField label="Power Consumption" value={params.proposedPowerConsumptionKW} onChange={(v: any) => setParams({...params, proposedPowerConsumptionKW: v})} suffix="kW" />
+                <InputField label="Speed" value={params.proposedSpeedSPrs} onChange={(v: any) => setParams({...params, proposedSpeedSPrs: v})} suffix="s/prs" />
+                <InputField label="Unit Price (Total Cost)" value={params.proposedUnitPrice} onChange={(v: any) => setParams({...params, proposedUnitPrice: v})} suffix="USD" />
+                <InputField label={t.maintenanceCost} value={params.proposedMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, proposedMaintenanceCostPerYear: v})} suffix="USD/Yr" />
+                <InputField label={t.consumablesCost} value={params.proposedConsumablesCostPerYear} onChange={(v: any) => setParams({...params, proposedConsumablesCostPerYear: v})} suffix="USD/Yr" />
+                <InputField label={t.depreciation} value={params.proposedDepreciationYears} onChange={(v: any) => setParams({...params, proposedDepreciationYears: v})} suffix="Years" />
+              </div>
             </div>
-            <InputField label={t.depreciation} value={params.depreciationYears} onChange={(v: any) => setParams({...params, depreciationYears: v})} suffix="Years" />
 
             <div className="pt-4 border-t border-zinc-800">
               <ImageUpload images={uploadedImages} setImages={setUploadedImages} />
@@ -174,31 +262,62 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
         )}
 
         {roiStep === 3 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
             <h2 className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-6">{t.prodData}</h2>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
-                <span className="text-[10px] font-bold uppercase text-zinc-500">{t.manual}</span>
-                <InputField label="Capacity / Hr" value={params.manualCapacityPerHour} onChange={(v: any) => setParams({...params, manualCapacityPerHour: v})} suffix="prs" />
-                <InputField label="Defective Rate" value={params.manualDefectiveRate} onChange={(v: any) => setParams({...params, manualDefectiveRate: v})} suffix="%" />
-                <InputField label="Manpower" value={params.manualManpower} onChange={(v: any) => setParams({...params, manualManpower: v})} suffix="prs" />
+            {/* IE & Quality Data Matrix */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-6 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">Current State</h3>
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-zinc-500">IE Data</h4>
+                  <InputField label="Cycle Time (CT)" value={params.currentCT} onChange={(v: any) => setParams({...params, currentCT: v})} suffix="s" />
+                  <InputField label="Pieces Per Hour (PPH)" value={params.currentPPH} onChange={(v: any) => setParams({...params, currentPPH: v})} suffix="prs/hr" />
+                  <InputField label="Manpower" value={params.currentManpower} onChange={(v: any) => setParams({...params, currentManpower: v})} suffix="prs" />
+                </div>
+                <div className="space-y-4 pt-4 border-t border-zinc-800/50">
+                  <h4 className="text-[10px] font-bold text-zinc-500">Quality Data</h4>
+                  <InputField label="RFT %" value={params.currentRFT} onChange={(v: any) => setParams({...params, currentRFT: v})} suffix="%" />
+                  <InputField label="Total Defect Rate" value={params.currentDefectRate} onChange={(v: any) => setParams({...params, currentDefectRate: v})} suffix="%" />
+                </div>
               </div>
-              <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
-                <span className="text-[10px] font-bold uppercase text-emerald-500">{t.machine}</span>
-                <InputField label="Capacity / Hr" value={params.machineCapacityPerHour} onChange={(v: any) => setParams({...params, machineCapacityPerHour: v})} suffix="prs" />
-                <InputField label="Defective Rate" value={params.machineDefectiveRate} onChange={(v: any) => setParams({...params, machineDefectiveRate: v})} suffix="%" />
-                <InputField label="Manpower" value={params.machineManpower} onChange={(v: any) => setParams({...params, machineManpower: v})} suffix="prs" />
+
+              <div className="space-y-6 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">Proposed State</h3>
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-emerald-600/70">IE Data</h4>
+                  <InputField label="Cycle Time (CT)" value={params.proposedCT} onChange={(v: any) => setParams({...params, proposedCT: v})} suffix="s" />
+                  <InputField label="Pieces Per Hour (PPH)" value={params.proposedPPH} onChange={(v: any) => setParams({...params, proposedPPH: v})} suffix="prs/hr" />
+                  <InputField label="Manpower" value={params.proposedManpower} onChange={(v: any) => setParams({...params, proposedManpower: v})} suffix="prs" />
+                </div>
+                <div className="space-y-4 pt-4 border-t border-emerald-900/30">
+                  <h4 className="text-[10px] font-bold text-emerald-600/70">Quality Data</h4>
+                  <InputField label="RFT %" value={params.proposedRFT} onChange={(v: any) => setParams({...params, proposedRFT: v})} suffix="%" />
+                  <InputField label="Total Defect Rate" value={params.proposedDefectRate} onChange={(v: any) => setParams({...params, proposedDefectRate: v})} suffix="%" />
+                </div>
               </div>
+            </div>
+
+            {/* Dynamic Material Cost Tables */}
+            <div className="space-y-6 pt-4 border-t border-zinc-800">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500">Material Cost Breakdown</h3>
+              <MaterialTable 
+                title="Current Material Cost" 
+                materials={params.currentMaterials || []} 
+                setMaterials={(m) => setParams({...params, currentMaterials: m})} 
+              />
+              <MaterialTable 
+                title="Proposed Material Cost" 
+                materials={params.proposedMaterials || []} 
+                setMaterials={(m) => setParams({...params, proposedMaterials: m})} 
+              />
             </div>
 
             <div className="pt-4 border-t border-zinc-800 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InputField label={`${t.materialCostPerPair} (${t.manual})`} value={params.currentMaterialCost} onChange={(v: any) => setParams({...params, currentMaterialCost: v})} suffix="USD/prs" />
-                <InputField label={`${t.materialCostPerPair} (${t.machine})`} value={params.proposedMaterialCost} onChange={(v: any) => setParams({...params, proposedMaterialCost: v})} suffix="USD/prs" />
+                <InputField label="Working Hours / Day" value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" />
+                <InputField label="Local Labor Cost" value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" />
               </div>
-              <InputField label="Working Hours / Day" value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" />
-              <InputField label="Local Labor Cost" value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" />
             </div>
           </motion.div>
         )}
