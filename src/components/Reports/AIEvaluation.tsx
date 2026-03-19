@@ -20,8 +20,8 @@ export const AIEvaluation = ({ aiEvaluation }: { aiEvaluation: any }) => {
       <div className="mb-4">
         <span className={cn(
           "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
-          aiEvaluation.verdict === "Strongly Recommend" ? "bg-emerald-900/30 text-emerald-500 border-emerald-800/50" :
-          aiEvaluation.verdict === "Consider with Caution" ? "bg-amber-900/30 text-amber-500 border-amber-800/50" :
+          (aiEvaluation.verdict === "Strongly Recommend" || aiEvaluation.verdict === "Duyệt Gấp") ? "bg-emerald-900/30 text-emerald-500 border-emerald-800/50" :
+          (aiEvaluation.verdict === "Consider with Caution" || aiEvaluation.verdict === "Cân Nhắc Kỹ") ? "bg-amber-900/30 text-amber-500 border-amber-800/50" :
           "bg-red-900/30 text-red-500 border-red-800/50"
         )}>
           {aiEvaluation.verdict}

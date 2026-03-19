@@ -84,19 +84,24 @@ export default function App() {
     setAiEvaluation(null);
     try {
       const prompt = `
-        Act as a Senior Investment Analyst in the Shoe Manufacturing industry. 
-        Analyze these ROI numbers and provide an evaluation in ${lang} language.
+        Bạn là Giám đốc Nhà máy (Factory Manager) lão luyện trong ngành sản xuất giày.
+        Phân tích ROI này bằng ngôn ngữ ${lang}.
+        Yêu cầu:
+        - NGẮN GỌN, TRỰC DIỆN, KHÔNG CHÀO HỎI.
+        - Dùng ngôn ngữ công xưởng thực tế (ví dụ: 'kèo này thơm', 'cắt được x người', 'chốt đơn', 'ảo quá').
+        - Tập trung vào 'Pain points': Tiết kiệm được bao nhiêu nhân công? Máy bao giờ hỏng? ROI có hợp lý không?
+        - Biết phản biện: Nếu số liệu quá ảo (ví dụ ROI < 3 tháng mà giá máy rẻ), phải nghi ngờ ngay: 'Số liệu này có nhầm không? Cắt được X người mà máy có Y$ thì hơi ảo, kiểm tra lại chi phí vận hành chưa?'.
         
         Project: ${projectName}
         Params: ${JSON.stringify(params)}
         Calculated Results: ${JSON.stringify(advancedResults)}
 
         Provide a structured evaluation in JSON format with:
-        - pros: array of 3-4 strings
-        - cons: array of 2-3 strings
-        - risks: array of strings
-        - verdict: Choose one: "Strongly Recommend", "Consider with Caution", or "Not Recommended"
-        - summary: A 2-sentence executive summary.
+        - pros: array of 3-4 strings (điểm cộng thực tế, nói thẳng vấn đề)
+        - cons: array of 2-3 strings (điểm trừ/nghi ngờ)
+        - risks: array of strings (rủi ro vận hành)
+        - verdict: Choose one EXACTLY: "Duyệt Gấp", "Cân Nhắc Kỹ", or "Bỏ Qua"
+        - summary: A 2-sentence executive summary (nói thẳng vào vấn đề tiền và người, phong cách sếp nhà máy).
       `;
 
       const response = await fetch('/api/evaluate', {
@@ -155,7 +160,7 @@ export default function App() {
           handleExportPDF={handleExportPDF} 
           handleSave={handleSave} 
           onAnalyze={() => {
-            setAiPrompt(`I am analyzing the ${params.equipmentName || 'current'} project. Here is the context: ${JSON.stringify({ params, advancedResults })}. Please provide a strategic executive summary.`);
+            setAiPrompt(`Tôi đang xem xét dự án ${params.equipmentName || 'này'}. Dữ liệu ROI: ${JSON.stringify({ params, advancedResults })}. Cho tôi xin đánh giá nhanh, trực diện theo góc nhìn quản lý nhà máy.`);
             setActiveTab('ai');
           }}
         />
@@ -175,7 +180,7 @@ export default function App() {
                   setUploadedImages={setUploadedImages} 
                   initialData={editingReportData}
                   onAnalyze={() => {
-                    setAiPrompt(`I am analyzing the ${params.equipmentName || 'current'} project. Here is the context: ${JSON.stringify({ params, advancedResults })}. Please provide a strategic executive summary.`);
+                    setAiPrompt(`Tôi đang xem xét dự án ${params.equipmentName || 'này'}. Dữ liệu ROI: ${JSON.stringify({ params, advancedResults })}. Cho tôi xin đánh giá nhanh, trực diện theo góc nhìn quản lý nhà máy.`);
                     setActiveTab('ai');
                   }}
                 />
