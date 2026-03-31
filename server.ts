@@ -233,7 +233,9 @@ async function startServer() {
       res.json(reports.map((r: any) => ({
         ...r,
         tags: typeof r.tags === 'string' ? JSON.parse(r.tags || "[]") : r.tags,
-        form_data: typeof r.form_data === 'string' ? JSON.parse(r.form_data || "{}") : r.form_data
+        form_data: typeof r.form_data === 'string' ? JSON.parse(r.form_data || "{}") : r.form_data,
+        image_url: typeof r.image_url === 'string' ? JSON.parse(r.image_url || "[]") : r.image_url,
+        ai_evaluation: typeof r.ai_evaluation === 'string' ? JSON.parse(r.ai_evaluation || "null") : r.ai_evaluation
       })));
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch ROI reports" });
@@ -260,7 +262,7 @@ async function startServer() {
         project_id, machine_name, shoe_model, vendor, investment_cost,
         labor_saving_cost, energy_saving_cost, other_savings,
         annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
-        ai_verdict, JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || []), JSON.stringify(form_data || {})
+        ai_verdict, typeof ai_evaluation === 'string' ? ai_evaluation : JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || []), JSON.stringify(form_data || {})
       ]);
 
       res.json({ id: (result as any).insertId || (result as any)[0]?.id });
@@ -290,7 +292,7 @@ async function startServer() {
         project_id, machine_name, shoe_model, vendor, investment_cost,
         labor_saving_cost, energy_saving_cost, other_savings,
         annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
-        ai_verdict, JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || []), JSON.stringify(form_data || {}),
+        ai_verdict, typeof ai_evaluation === 'string' ? ai_evaluation : JSON.stringify(ai_evaluation || null), status || 'Draft', JSON.stringify(tags || []), JSON.stringify(image_url || []), JSON.stringify(form_data || {}),
         id
       ]);
 
@@ -403,6 +405,39 @@ async function startServer() {
       res.json(JSON.parse(response.text || "{}"));
     } catch (err: any) {
       console.error("Gemini Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/infographic", async (req, res) => {
+    try {
+      const { params, results } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "Gemini API Key not configured" });
+
+      const prompt = `
+        Dựa vào dữ liệu dự án CAPEX sau, hãy tạo nội dung ngắn gọn để làm Infographic báo cáo.
+        Thiết bị: ${params?.equipmentName || 'Máy mới'}
+        Tiết kiệm: ${results?.savings?.totalAnnualSaving || 0} USD/năm
+        ROI: ${results?.roiMonths || 0} tháng
+        
+        Trả về ĐÚNG định dạng JSON gồm:
+        {
+          "title": "Tiêu đề Infographic",
+          "keyStats": [ "Stat 1", "Stat 2", "Stat 3" ],
+          "highlights": [ "Điểm nổi bật 1", "Điểm nổi bật 2" ]
+        }
+      `;
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ parts: [{ text: prompt }] }],
+        config: { responseMimeType: "application/json" }
+      });
+      res.json(JSON.parse(response.text || "{}"));
+    } catch (err: any) {
+      console.error("Infographic Error:", err);
       res.status(500).json({ error: err.message });
     }
   });

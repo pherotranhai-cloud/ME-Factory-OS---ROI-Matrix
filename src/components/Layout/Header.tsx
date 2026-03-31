@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Save, Sparkles, Sun, Moon } from 'lucide-react';
+import { Download, Save, Sparkles, Sun, Moon, FileSpreadsheet, Image as ImageIcon } from 'lucide-react';
 
-export const Header = ({ activeTab, t, advancedResults, isEvaluating, isSaving, handleEvaluate, handleExportPDF, handleSave, onAnalyze }: any) => {
+export const Header = ({ activeTab, t, advancedResults, isEvaluating, isSaving, isGeneratingInfographic, handleEvaluate, handleExportPDF, handleExportExcel, handleGenerateInfographic, handleSave, onAnalyze }: any) => {
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
@@ -36,8 +36,14 @@ export const Header = ({ activeTab, t, advancedResults, isEvaluating, isSaving, 
             <button onClick={handleEvaluate} disabled={isEvaluating} className="factory-btn bg-blue-600 hover:bg-blue-500 text-white border-blue-500 flex items-center gap-2 shadow-lg shadow-blue-900/20 h-10 px-5">
               {isEvaluating ? 'Evaluating...' : 'AI Evaluate'}
             </button>
+            <button onClick={handleGenerateInfographic} disabled={isGeneratingInfographic} className="factory-btn bg-purple-600 hover:bg-purple-500 text-white border-purple-500 flex items-center gap-2 shadow-lg shadow-purple-900/20 h-10 px-5">
+              <ImageIcon size={16} /> {isGeneratingInfographic ? 'Generating...' : t.aiInfographic || 'AI Infographic'}
+            </button>
             <button onClick={handleExportPDF} disabled={isSaving} className="factory-btn bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700 flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
               <Download size={16} /> Export PDF
+            </button>
+            <button onClick={handleExportExcel} disabled={isSaving} className="factory-btn bg-emerald-800 hover:bg-emerald-700 text-white border-emerald-700 flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
+              <FileSpreadsheet size={16} /> Export Excel
             </button>
             <button onClick={handleSave} disabled={isSaving} className="factory-btn flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
               <Save size={16} /> {isSaving ? 'Saving...' : t.saveReport || 'Save Report'}

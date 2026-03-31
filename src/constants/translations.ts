@@ -8,6 +8,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     aiAssistant: "AI Assistant",
     sysStatus: "SYS_STATUS: OPTIMAL",
     exportPdf: "Export PDF",
+    exportExcel: "Export Excel",
     saveReport: "Save Report",
     step: "Step",
     generalInfo: "General Information",
@@ -135,6 +136,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     investment: "Investment",
     savings: "Savings",
     status: "Status",
+    aiInfographic: "AI Infographic",
   },
   VI: {
     dashboard: "Bảng điều khiển",
@@ -143,6 +145,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     aiAssistant: "Trợ lý AI",
     sysStatus: "TRẠNG THÁI: TỐI ƯU",
     exportPdf: "Xuất PDF",
+    exportExcel: "Xuất Excel",
     saveReport: "Lưu báo cáo",
     step: "Bước",
     generalInfo: "Thông tin chung",
@@ -270,6 +273,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     investment: "Đầu tư",
     savings: "Tiết kiệm",
     status: "Trạng thái",
+    aiInfographic: "Infographic AI",
   },
   'ZH-CN': {
     dashboard: "仪表板",
@@ -278,6 +282,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     aiAssistant: "AI 助手",
     sysStatus: "系统状态：最佳",
     exportPdf: "导出 PDF",
+    exportExcel: "导出 Excel",
     saveReport: "保存报告",
     step: "步骤",
     generalInfo: "一般信息",
@@ -405,6 +410,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     investment: "投资",
     savings: "节约",
     status: "状态",
+    aiInfographic: "AI 信息图",
   },
   'ZH-TW': {
     dashboard: "儀表板",
@@ -413,6 +419,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     aiAssistant: "AI 助手",
     sysStatus: "系統狀態：最佳",
     exportPdf: "導出 PDF",
+    exportExcel: "導出 Excel",
     saveReport: "保存報告",
     step: "步驟",
     generalInfo: "一般信息",
@@ -540,6 +547,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     investment: "投資",
     savings: "節約",
     status: "狀態",
+    aiInfographic: "AI 資訊圖",
   },
   ID: {
     dashboard: "Dasbor",
@@ -548,6 +556,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     aiAssistant: "Asisten AI",
     sysStatus: "STATUS_SISTEM: OPTIMAL",
     exportPdf: "Ekspor PDF",
+    exportExcel: "Ekspor Excel",
     saveReport: "Simpan Laporan",
     step: "Langkah",
     generalInfo: "Informasi Umum",
@@ -675,6 +684,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     investment: "Investasi",
     savings: "Penghematan",
     status: "Status",
+    aiInfographic: "Infografis AI",
   },
   MY: {
     dashboard: "Papan Pemuka",
@@ -683,6 +693,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     aiAssistant: "Pembantu AI",
     sysStatus: "STATUS_SISTEM: OPTIMAL",
     exportPdf: "Eksport PDF",
+    exportExcel: "Eksport Excel",
     saveReport: "Simpan Laporan",
     step: "Langkah",
     generalInfo: "Maklumat Am",
@@ -810,6 +821,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     investment: "Pelaburan",
     savings: "Penjimatan",
     status: "Status",
+    aiInfographic: "Infografik AI",
   }
 };
 

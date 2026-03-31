@@ -13,7 +13,8 @@ import {
   Trash2,
   ChevronDown,
   Eye,
-  Download
+  Download,
+  Edit2
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -24,6 +25,7 @@ import { twMerge } from 'tailwind-merge';
 import { Language } from '../../types';
 import { CAPEXReportTemplate, generatePDF } from '../Reports/PDFTemplate';
 import { TRANSLATIONS } from '../../constants/translations';
+import { calculateAdvancedROI } from '../../hooks/useAppState';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -92,7 +94,7 @@ export const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { re
   );
 };
 
-export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any, refreshTrigger: number }) => {
+export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Language, t: any, refreshTrigger: number, onEditReport: (report: any) => void }) => {
   const [stats, setStats] = useState<any>({});
   const [history, setHistory] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -395,6 +397,13 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
                       >
                         <Eye size={16} />
                       </button>
+                      <button 
+                        onClick={() => onEditReport(r)}
+                        className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                        title="Edit Report"
+                      >
+                        <Edit2 size={16} />
+                      </button>
                       {deleteConfirm === r.id ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-[10px] text-red-400 font-bold uppercase">Sure?</span>
@@ -424,6 +433,20 @@ export const Dashboard = ({ lang, t, refreshTrigger }: { lang: Language, t: any,
             </tbody>
           </table>
         </div>
+      </div>
+      
+      {/* Hidden Template for PDF Export */}
+      <div id="capex-template" className="hidden">
+        {selectedReport && (
+          <CAPEXReportTemplate 
+            params={selectedReport.form_data} 
+            results={calculateAdvancedROI(selectedReport.form_data)} 
+            aiEvaluation={selectedReport.ai_evaluation} 
+            t={t} 
+            uploadedImages={selectedReport.image_url} 
+            lang={lang} 
+          />
+        )}
       </div>
     </div>
   );

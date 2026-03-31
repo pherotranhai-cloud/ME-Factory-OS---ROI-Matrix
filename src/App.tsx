@@ -5,10 +5,14 @@ import { AIChatbot } from './components/AI/AIChatbot';
 import { ROICalculatorForm } from './components/Forms/ROICalculatorForm';
 import { CAPEXReportTemplate, generatePDF } from './components/Reports/PDFTemplate';
 import { AIEvaluation } from './components/Reports/AIEvaluation';
+import { Infographic } from './components/Reports/Infographic';
 import { Sidebar } from './components/Layout/Sidebar';
 import { Header } from './components/Layout/Header';
 import { useAppState } from './hooks/useAppState';
 import { TRANSLATIONS } from './constants/translations';
+import html2canvas from 'html2canvas';
+
+import { exportToExcel } from './utils/excelExport';
 
 export default function App() {
   const {
@@ -30,8 +34,21 @@ export default function App() {
 
   const [editingReportData, setEditingReportData] = React.useState<any>(null);
   const [aiPrompt, setAiPrompt] = React.useState('');
+  const [isGeneratingInfographic, setIsGeneratingInfographic] = React.useState(false);
+  const [infographicData, setInfographicData] = React.useState<any>(null);
+  const infographicRef = React.useRef<HTMLDivElement>(null);
 
   const t = TRANSLATIONS[lang];
+
+  const handleExportExcel = async () => {
+    if (!advancedResults) return;
+    try {
+      await exportToExcel(params, advancedResults, t);
+    } catch (err: any) {
+      console.error(err);
+      alert('Excel Export failed: ' + err.message);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -56,7 +73,7 @@ export default function App() {
           annual_savings: advancedResults?.savings.totalAnnualSaving,
           roi_months: advancedResults?.roiMonths,
           roi_percentage: advancedResults ? (advancedResults.savings.totalAnnualSaving / params.unitPrice) * 100 : 0,
-          ai_verdict: aiEvaluation?.verdict,
+          ai_verdict: typeof aiEvaluation?.verdict === 'string' ? aiEvaluation.verdict : (aiEvaluation?.verdict?.verdict || 'Draft'),
           ai_evaluation: aiEvaluation,
           status: 'Draft',
           tags: ['ROI', params.machineType, params.shoeModel],
@@ -125,6 +142,55 @@ export default function App() {
     }
   };
 
+  const handleGenerateInfographic = async () => {
+    if (!advancedResults) return;
+    setIsGeneratingInfographic(true);
+    try {
+      const response = await fetch('/api/infographic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          params: params,
+          results: advancedResults
+        })
+      });
+
+      if (!response.ok) throw new Error('Infographic generation failed');
+      
+      const data = await response.json();
+      setInfographicData(data);
+
+      // Wait for React to render the infographic component
+      setTimeout(async () => {
+        const element = document.getElementById('infographic-capture');
+        if (element) {
+          const canvas = await html2canvas(element, {
+            backgroundColor: '#000000',
+            scale: 2,
+            logging: false,
+            useCORS: true
+          });
+          
+          const image = canvas.toDataURL('image/jpeg', 0.9);
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = `Infographic_${params.equipmentName || 'CAPEX'}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clear infographic data after capture
+          setInfographicData(null);
+        }
+      }, 500);
+    } catch (err: any) {
+      console.error(err);
+      alert('Infographic generation failed: ' + err.message);
+    } finally {
+      setIsGeneratingInfographic(false);
+    }
+  };
+
   const handleExportPDF = async () => {
     if (!advancedResults) return;
     setIsSaving(true);
@@ -145,7 +211,11 @@ export default function App() {
         setActiveTab={setActiveTab} 
         lang={lang} 
         setLang={setLang} 
-        resetForm={resetForm} 
+        resetForm={() => { 
+          resetForm(); 
+          setEditingReportData(null);
+          setEditingReportId(null);
+        }} 
         t={t} 
       />
 
@@ -156,8 +226,11 @@ export default function App() {
           advancedResults={advancedResults} 
           isEvaluating={isEvaluating} 
           isSaving={isSaving} 
+          isGeneratingInfographic={isGeneratingInfographic}
           handleEvaluate={handleEvaluate} 
           handleExportPDF={handleExportPDF} 
+          handleExportExcel={handleExportExcel}
+          handleGenerateInfographic={handleGenerateInfographic}
           handleSave={handleSave} 
           onAnalyze={() => {
             setAiPrompt(`Tôi đang xem xét dự án ${params.equipmentName || 'này'}. Dữ liệu ROI: ${JSON.stringify({ params, advancedResults })}. Cho tôi xin đánh giá nhanh, trực diện theo góc nhìn quản lý nhà máy.`);
@@ -166,8 +239,24 @@ export default function App() {
         />
 
         <div className="p-8">
-          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} />}
-          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={(report) => { setEditingReportData(report); setActiveTab('roi'); }} />}
+          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} onEditReport={(report: any) => {
+            setEditingReportData(report);
+            setProjectName(report.machine_name || 'ROI Project');
+            setParams(report.form_data);
+            setAiEvaluation(report.ai_evaluation);
+            setUploadedImages(report.image_url);
+            setEditingReportId(report.id);
+            setActiveTab('roi');
+          }} />}
+          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={(report: any) => { 
+            setEditingReportData(report); 
+            setProjectName(report.machine_name || 'ROI Project');
+            setParams(report.form_data);
+            setAiEvaluation(report.ai_evaluation);
+            setUploadedImages(report.image_url);
+            setEditingReportId(report.id);
+            setActiveTab('roi'); 
+          }} />}
           {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} />}
           {activeTab === 'roi' && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -178,12 +267,15 @@ export default function App() {
                   setParams={setParams} 
                   uploadedImages={uploadedImages} 
                   setUploadedImages={setUploadedImages} 
-                  initialData={editingReportData}
                   advancedResults={advancedResults}
                   onAnalyze={() => {
                     setAiPrompt(`Tôi đang xem xét dự án ${params.equipmentName || 'này'}. Dữ liệu ROI: ${JSON.stringify({ params, advancedResults })}. Cho tôi xin đánh giá nhanh, trực diện theo góc nhìn quản lý nhà máy.`);
                     setActiveTab('ai');
                   }}
+                  handleExportPDF={handleExportPDF}
+                  handleExportExcel={handleExportExcel}
+                  handleGenerateInfographic={handleGenerateInfographic}
+                  isGeneratingInfographic={isGeneratingInfographic}
                 />
               </div>
               <div className="lg:col-span-7 space-y-6">
@@ -212,6 +304,17 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Hidden Infographic for Capture */}
+      {infographicData && (
+        <div className="fixed -left-[2000px] top-0">
+          <Infographic 
+            data={infographicData} 
+            params={params} 
+            results={advancedResults} 
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, X, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { Upload, X, Sparkles, Plus, Trash2, Download, FileSpreadsheet, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -32,15 +32,15 @@ const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (i
   const [uploading, setUploading] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     setUploading(true);
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'djgai7h3b';
     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 
     try {
-      const uploadPromises = Array.from(files).map(async (file: File) => {
+      const uploadPromises = files.map(async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', uploadPreset);
@@ -59,7 +59,7 @@ const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (i
       });
 
       const urls = await Promise.all(uploadPromises);
-      setImages([...images, ...urls].slice(0, 3));
+      setImages([...(images || []), ...urls].slice(0, 3));
     } catch (err: any) {
       console.error("Cloudinary Upload Error:", err);
       alert('Upload failed: ' + err.message);
@@ -69,7 +69,7 @@ const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (i
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages((images || []).filter((_, i) => i !== index));
   };
 
   return (
@@ -87,7 +87,7 @@ const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (i
             </button>
           </div>
         ))}
-        {images.length < 3 && (
+        {(images?.length || 0) < 3 && (
           <label className="aspect-square factory-border flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-900 transition-colors border-dashed">
             <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
             <Upload size={16} className={uploading ? "animate-bounce text-emerald-500" : "text-zinc-500"} />
@@ -101,18 +101,18 @@ const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (i
 
 const MaterialTable = ({ materials, setMaterials, title, t }: { materials: MaterialItem[], setMaterials: (m: MaterialItem[]) => void, title: string, t: any }) => {
   const addRow = () => {
-    setMaterials([...materials, { id: Math.random().toString(), type: '', description: '', supplier: '', uom: '', usage: 0, loss: 0, fob: 0 }]);
+    setMaterials([...(materials || []), { id: Math.random().toString(), type: '', description: '', supplier: '', uom: '', usage: 0, loss: 0, fob: 0 }]);
   };
 
   const updateRow = (id: string, field: keyof MaterialItem, value: any) => {
-    setMaterials(materials.map(m => m.id === id ? { ...m, [field]: value } : m));
+    setMaterials((materials || []).map(m => m.id === id ? { ...m, [field]: value } : m));
   };
 
   const removeRow = (id: string) => {
-    setMaterials(materials.filter(m => m.id !== id));
+    setMaterials((materials || []).filter(m => m.id !== id));
   };
 
-  const totalCost = materials.reduce((sum, m) => sum + (m.usage * m.fob * (1 + m.loss / 100)), 0);
+  const totalCost = (materials || []).reduce((sum, m) => sum + (m.usage * m.fob * (1 + m.loss / 100)), 0);
 
   return (
     <div className="space-y-4 bg-zinc-900/30 p-4 rounded border border-zinc-800">
@@ -139,7 +139,7 @@ const MaterialTable = ({ materials, setMaterials, title, t }: { materials: Mater
             </tr>
           </thead>
           <tbody>
-            {materials.map(m => {
+            {(materials || []).map(m => {
               const cost = m.usage * m.fob * (1 + m.loss / 100);
               return (
                 <tr key={m.id} className="border-b border-zinc-800/50">
@@ -177,23 +177,16 @@ interface ROICalculatorFormProps {
   setParams: (params: ROIParams) => void;
   uploadedImages: string[];
   setUploadedImages: (images: string[]) => void;
-  initialData?: any;
   advancedResults?: any;
   onAnalyze?: () => void;
+  handleExportPDF?: () => void;
+  handleExportExcel?: () => void;
+  handleGenerateInfographic?: () => void;
+  isGeneratingInfographic?: boolean;
 }
 
-export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, initialData, advancedResults, onAnalyze }) => {
+export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, advancedResults, onAnalyze, handleExportPDF, handleExportExcel, handleGenerateInfographic, isGeneratingInfographic }) => {
   const [roiStep, setRoiStep] = useState(1);
-
-  React.useEffect(() => {
-    if (initialData) {
-      const formData = typeof initialData.form_data === 'string' ? JSON.parse(initialData.form_data) : initialData.form_data;
-      if (formData) {
-        setParams(formData);
-      }
-      setUploadedImages(typeof initialData.image_url === 'string' ? JSON.parse(initialData.image_url || '[]') : (initialData.image_url || []));
-    }
-  }, [initialData, setParams, setUploadedImages]);
 
   return (
     <div className="space-y-6">
@@ -333,30 +326,42 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
               <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.manual.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.manual?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualMaintenance}</span><span className="font-mono">${params.currentMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualConsumables}</span><span className="font-mono">${params.currentConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualDepreciation}</span><span className="font-mono">${(params.currentUnitPrice / (params.currentDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.manual.materialCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.manual.operatingCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-zinc-800"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.manual.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.manual.costPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.manual?.materialCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.manual?.operatingCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-zinc-800"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.manual?.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.manual?.costPerPair?.toFixed(4) || 0}</span></div>
                 </div>
               </div>
 
               <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.machine.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.machine?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualMaintenance}</span><span className="font-mono">${params.proposedMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualConsumables}</span><span className="font-mono">${params.proposedConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualDepreciation}</span><span className="font-mono">${(params.proposedUnitPrice / (params.proposedDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.machine.materialCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.machine.operatingCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-emerald-900/30"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.machine.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.machine.costPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.machine?.materialCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.machine?.operatingCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-emerald-900/30"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.machine?.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.machine?.costPerPair?.toFixed(4) || 0}</span></div>
                 </div>
               </div>
+            </div>
+
+            <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-zinc-800">
+              <button onClick={handleGenerateInfographic} disabled={isGeneratingInfographic} className="factory-btn bg-purple-600 hover:bg-purple-500 text-white border-purple-500 flex items-center gap-2 shadow-lg shadow-purple-900/20 h-10 px-5">
+                <ImageIcon size={16} /> {isGeneratingInfographic ? 'Generating...' : t.aiInfographic || 'AI Infographic'}
+              </button>
+              <button onClick={handleExportPDF} className="factory-btn bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700 flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
+                <Download size={16} /> {t.exportPdf || 'Export PDF'}
+              </button>
+              <button onClick={handleExportExcel} className="factory-btn bg-emerald-800 hover:bg-emerald-700 text-white border-emerald-700 flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
+                <FileSpreadsheet size={16} /> {t.exportExcel || 'Export Excel'}
+              </button>
             </div>
           </motion.div>
         )}

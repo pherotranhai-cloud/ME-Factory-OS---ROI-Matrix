@@ -56,7 +56,7 @@ export const CAPEXReportTemplate: React.FC<PDFTemplateProps> = ({ params, result
     <div className="border-b-4 border-emerald-600 pb-6 mb-8 flex justify-between items-end">
       <div>
         <h1 className="text-3xl font-black text-emerald-800 uppercase tracking-tight">{t.capexProposal}</h1>
-        <p className="text-[10px] text-zinc-500 font-mono mt-2 tracking-widest">REF: {params.project_id || `${params.shoeModel.toUpperCase()}-${params.date.replace(/-/g, '')}`}</p>
+        <p className="text-[10px] text-zinc-500 font-mono mt-2 tracking-widest">REF: {params.project_id || `${(params.shoeModel || '').toUpperCase()}-${(params.date || '').replace(/-/g, '')}`}</p>
       </div>
       <div className="text-right">
         <div className="flex items-center justify-end gap-2 text-emerald-600 mb-1">
@@ -120,9 +120,9 @@ export const CAPEXReportTemplate: React.FC<PDFTemplateProps> = ({ params, result
             </table>
           </div>
           <div className="flex flex-col items-center justify-center border-2 border-zinc-100 rounded-xl p-4 bg-zinc-50/50 shadow-inner">
-            {uploadedImages.length > 0 ? (
+            {(uploadedImages?.length || 0) > 0 ? (
               <img 
-                src={uploadedImages[0]} 
+                src={uploadedImages?.[0]} 
                 alt="Machine" 
                 className="max-w-full max-h-[60mm] object-contain mb-4 rounded shadow-md"
                 referrerPolicy="no-referrer"
