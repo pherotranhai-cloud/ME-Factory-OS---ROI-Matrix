@@ -25,9 +25,9 @@ export const Sidebar = ({ activeTab, setActiveTab, lang, setLang, resetForm, t }
   return (
     <aside className="w-64 factory-border border-r border-zinc-800 flex flex-col bg-[#0d0d0d]">
       <div className="p-6 border-b border-zinc-800">
-        <div className="flex items-center gap-2 text-emerald-500 mb-1">
-          <Cpu size={24} />
-          <span className="font-mono font-black text-lg tracking-tighter italic">FACTORY OS</span>
+        <div className="flex items-center gap-3 text-emerald-500 mb-1">
+          <img src="/laiyih-logo.png" alt="Laiyih Logo" className="h-8 w-auto object-contain" />
+          <span className="font-mono font-black text-lg tracking-tighter italic">LY ROI MATRIX</span>
         </div>
         <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Manufacturing Excellence</span>
       </div>

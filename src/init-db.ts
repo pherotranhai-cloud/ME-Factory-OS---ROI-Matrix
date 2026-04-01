@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 
 const db = new Database("database.sqlite");
 
-console.log("⚙️ Initializing ME Factory OS Database...");
+console.log("⚙️ Initializing LY ROI MATRIX Database...");
 
 try {
   db.exec(`

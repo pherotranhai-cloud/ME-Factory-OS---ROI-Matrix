@@ -1,4 +1,4 @@
-# Factory OS ROI Matrix - Production Ready
+# LY ROI MATRIX - Production Ready
 
 A professional ROI (Return on Investment) calculation and reporting tool for shoe manufacturing equipment.
 
@@ -47,4 +47,3 @@ This application is optimized for deployment on **Netlify**.
 3. Set the publish directory to `dist`.
 4. Configure the environment variables in the Netlify dashboard.
 5. Set up a Cloudinary "Unsigned Upload Preset" for machine photos.
-"# ME-Factory-OS---ROI-Matrix" 

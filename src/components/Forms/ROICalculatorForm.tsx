@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, X, Sparkles, Plus, Trash2, Download, FileSpreadsheet, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Sparkles, Plus, Trash2, Download, FileSpreadsheet, Image as ImageIcon, Check, ArrowDown, ArrowUp, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -9,9 +9,20 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const InputField = ({ label, value, onChange, type = "number", suffix, className = "" }: any) => (
+const InputField = ({ label, value, onChange, type = "number", suffix, className = "", tooltip }: any) => (
   <div className={cn("mb-4", className)}>
-    <label className="factory-label text-[10px]">{label}</label>
+    <div className="flex items-center gap-1.5 mb-1.5">
+      <label className="factory-label !mb-0">{label}</label>
+      {tooltip && (
+        <div className="group relative">
+          <Info size={12} className="text-zinc-600 cursor-help hover:text-emerald-500 transition-colors" />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 leading-relaxed translate-y-1 group-hover:translate-y-0 backdrop-blur-md">
+            <div className="font-bold text-emerald-500 mb-1 uppercase tracking-tighter">Field Info</div>
+            {tooltip}
+          </div>
+        </div>
+      )}
+    </div>
     <div className="relative">
       <input
         type={type}
@@ -127,13 +138,83 @@ const MaterialTable = ({ materials, setMaterials, title, t }: { materials: Mater
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-zinc-800 text-[10px] text-zinc-500 uppercase tracking-wider">
-              <th className="p-2 font-medium">{t.type || 'Type'}</th>
-              <th className="p-2 font-medium">{t.description || 'Description'}</th>
-              <th className="p-2 font-medium">{t.supplier || 'Supplier'}</th>
-              <th className="p-2 font-medium">{t.uom || 'UOM'}</th>
-              <th className="p-2 font-medium">{t.usage || 'Usage'}</th>
-              <th className="p-2 font-medium">{t.loss || 'Loss %'}</th>
-              <th className="p-2 font-medium">{t.fob || 'FOB ($)'}</th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.type || 'Type'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      Category of material (e.g., Fabric, Foam).
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.description || 'Description'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      Detailed name or specification.
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.supplier || 'Supplier'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      The company providing the material.
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.uom || 'UOM'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      Unit of Measure (e.g., m, kg, prs).
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.usage || 'Usage'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      Amount of material used per pair.
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.loss || 'Loss %'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      Percentage of material wasted.
+                    </div>
+                  </div>
+                </div>
+              </th>
+              <th className="p-2 font-medium">
+                <div className="flex items-center gap-1">
+                  {t.fob || 'FOB ($)'}
+                  <div className="group relative">
+                    <Info size={10} className="text-zinc-600 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-zinc-900 border border-zinc-800 rounded shadow-xl text-[9px] text-zinc-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-normal">
+                      Free On Board price per unit.
+                    </div>
+                  </div>
+                </div>
+              </th>
               <th className="p-2 font-medium text-right">{t.costPerPr || 'Cost/Pr'}</th>
               <th className="p-2"></th>
             </tr>
@@ -179,43 +260,56 @@ interface ROICalculatorFormProps {
   setUploadedImages: (images: string[]) => void;
   advancedResults?: any;
   onAnalyze?: () => void;
-  handleExportPDF?: () => void;
-  handleExportExcel?: () => void;
-  handleGenerateInfographic?: () => void;
-  isGeneratingInfographic?: boolean;
 }
 
-export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, advancedResults, onAnalyze, handleExportPDF, handleExportExcel, handleGenerateInfographic, isGeneratingInfographic }) => {
+export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params, setParams, uploadedImages, setUploadedImages, advancedResults, onAnalyze }) => {
   const [roiStep, setRoiStep] = useState(1);
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 mb-4">
-        {[1, 2, 3, 4].map((s) => (
-          <button
-            key={s}
-            onClick={() => setRoiStep(s)}
-            className={cn(
-              "flex-1 py-2 text-[10px] font-bold uppercase tracking-widest border transition-all",
-              roiStep === s ? "bg-emerald-600 border-emerald-500 text-white" : "bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-            )}
-          >
-            {t.step} {s}
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-12 relative px-4">
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-zinc-800 -translate-y-1/2 z-0" />
+        {[1, 2, 3, 4].map((s, idx) => {
+          const isActive = roiStep === s;
+          const isCompleted = roiStep > s;
+          
+          return (
+            <React.Fragment key={s}>
+              <div className="relative z-10 flex flex-col items-center">
+                <button
+                  onClick={() => setRoiStep(s)}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2",
+                    isActive ? "bg-emerald-600 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] scale-110" :
+                    isCompleted ? "bg-emerald-900/50 border-emerald-600 text-emerald-400" :
+                    "bg-zinc-900 border-zinc-800 text-zinc-600 hover:border-zinc-700"
+                  )}
+                >
+                  {isCompleted ? <Check size={18} /> : s}
+                </button>
+                <span className={cn(
+                  "text-[9px] font-black uppercase tracking-widest mt-3",
+                  isActive ? "text-emerald-500" : isCompleted ? "text-emerald-700" : "text-zinc-600"
+                )}>
+                  {s === 1 ? t.generalInfo : s === 2 ? t.techSpecs : s === 3 ? t.prodData : t.financialMetrics}
+                </span>
+              </div>
+            </React.Fragment>
+          );
+        })}
       </div>
 
-      <div className="factory-card min-h-[500px]">
+      <div className="factory-card bg-zinc-900/50 border-zinc-800/50 p-8 rounded-2xl shadow-xl backdrop-blur-md min-h-[500px]">
         {roiStep === 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-6">{t.generalInfo}</h2>
-            <InputField label={t.shoeModel} type="text" value={params.shoeModel} onChange={(v: any) => setParams({...params, shoeModel: v})} />
-            <InputField label={t.date} type="date" value={params.date} onChange={(v: any) => setParams({...params, date: v})} />
-            <InputField label={t.equipment} type="text" value={params.equipmentName} onChange={(v: any) => setParams({...params, equipmentName: v})} />
-            <InputField label={t.machineType} type="text" value={params.machineType} onChange={(v: any) => setParams({...params, machineType: v})} />
-            <InputField label={t.brand} type="text" value={params.brand} onChange={(v: any) => setParams({...params, brand: v})} />
-            <InputField label={t.scopeOfWork} type="text" value={params.scopeOfWork} onChange={(v: any) => setParams({...params, scopeOfWork: v})} />
-            <InputField label={t.machineQuantity} type="number" value={params.machineQuantity} onChange={(v: any) => setParams({...params, machineQuantity: v})} />
+            <InputField label={t.shoeModel} type="text" value={params.shoeModel} onChange={(v: any) => setParams({...params, shoeModel: v})} tooltip="The specific model of the shoe being produced (e.g., Ultraboost 2024)." />
+            <InputField label={t.date} type="date" value={params.date} onChange={(v: any) => setParams({...params, date: v})} tooltip="The date of the ROI evaluation." />
+            <InputField label={t.equipment} type="text" value={params.equipmentName} onChange={(v: any) => setParams({...params, equipmentName: v})} tooltip="The name of the machine or equipment being evaluated." />
+            <InputField label={t.machineType} type="text" value={params.machineType} onChange={(v: any) => setParams({...params, machineType: v})} tooltip="The category of the machine (e.g., Stitching, Cutting, Assembly)." />
+            <InputField label={t.brand} type="text" value={params.brand} onChange={(v: any) => setParams({...params, brand: v})} tooltip="The manufacturer or brand of the equipment." />
+            <InputField label={t.scopeOfWork} type="text" value={params.scopeOfWork} onChange={(v: any) => setParams({...params, scopeOfWork: v})} tooltip="Brief description of the process this machine handles." />
+            <InputField label={t.machineQuantity} type="number" value={params.machineQuantity} onChange={(v: any) => setParams({...params, machineQuantity: v})} tooltip="Number of units being considered for purchase or replacement." />
           </motion.div>
         )}
 
@@ -227,25 +321,25 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
               {/* Current State Column */}
               <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2 mb-4">{t.manual}</h3>
-                <InputField label={t.powerSupply} type="text" value={params.currentPowerSupplyV} onChange={(v: any) => setParams({...params, currentPowerSupplyV: v})} suffix="V" />
-                <InputField label={t.powerConsumption} value={params.currentPowerConsumptionKW} onChange={(v: any) => setParams({...params, currentPowerConsumptionKW: v})} suffix="kW" />
-                <InputField label={t.speed} value={params.currentSpeedSPrs} onChange={(v: any) => setParams({...params, currentSpeedSPrs: v})} suffix="s/prs" />
-                <InputField label={t.unitPrice} value={params.currentUnitPrice} onChange={(v: any) => setParams({...params, currentUnitPrice: v})} suffix="USD" />
-                <InputField label={t.maintenanceCost} value={params.currentMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, currentMaintenanceCostPerYear: v})} suffix="USD/Yr" />
-                <InputField label={t.consumablesCost} value={params.currentConsumablesCostPerYear} onChange={(v: any) => setParams({...params, currentConsumablesCostPerYear: v})} suffix="USD/Yr" />
-                <InputField label={t.depreciation} value={params.currentDepreciationYears} onChange={(v: any) => setParams({...params, currentDepreciationYears: v})} suffix="Years" />
+                <InputField label={t.powerSupply} type="text" value={params.currentPowerSupplyV} onChange={(v: any) => setParams({...params, currentPowerSupplyV: v})} suffix="V" tooltip="Required voltage for the manual process equipment." />
+                <InputField label={t.powerConsumption} value={params.currentPowerConsumptionKW} onChange={(v: any) => setParams({...params, currentPowerConsumptionKW: v})} suffix="kW" tooltip="Energy usage in kilowatts per hour for the manual process." />
+                <InputField label={t.speed} value={params.currentSpeedSPrs} onChange={(v: any) => setParams({...params, currentSpeedSPrs: v})} suffix="s/prs" tooltip="Current production speed measured in seconds per pair." />
+                <InputField label={t.unitPrice} value={params.currentUnitPrice} onChange={(v: any) => setParams({...params, currentUnitPrice: v})} suffix="USD" tooltip="The estimated value or cost of current manual setup." />
+                <InputField label={t.maintenanceCost} value={params.currentMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, currentMaintenanceCostPerYear: v})} suffix="USD/Yr" tooltip="Estimated annual cost for repairs and maintenance of current setup." />
+                <InputField label={t.consumablesCost} value={params.currentConsumablesCostPerYear} onChange={(v: any) => setParams({...params, currentConsumablesCostPerYear: v})} suffix="USD/Yr" tooltip="Estimated annual cost for parts that need regular replacement." />
+                <InputField label={t.depreciation} value={params.currentDepreciationYears} onChange={(v: any) => setParams({...params, currentDepreciationYears: v})} suffix="Years" tooltip="Number of years over which the current equipment value is written off." />
               </div>
 
               {/* Proposed State Column */}
               <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2 mb-4">{t.machine}</h3>
-                <InputField label={t.powerSupply} type="text" value={params.proposedPowerSupplyV} onChange={(v: any) => setParams({...params, proposedPowerSupplyV: v})} suffix="V" />
-                <InputField label={t.powerConsumption} value={params.proposedPowerConsumptionKW} onChange={(v: any) => setParams({...params, proposedPowerConsumptionKW: v})} suffix="kW" />
-                <InputField label={t.speed} value={params.proposedSpeedSPrs} onChange={(v: any) => setParams({...params, proposedSpeedSPrs: v})} suffix="s/prs" />
-                <InputField label={t.unitPrice} value={params.proposedUnitPrice} onChange={(v: any) => setParams({...params, proposedUnitPrice: v})} suffix="USD" />
-                <InputField label={t.maintenanceCost} value={params.proposedMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, proposedMaintenanceCostPerYear: v})} suffix="USD/Yr" />
-                <InputField label={t.consumablesCost} value={params.proposedConsumablesCostPerYear} onChange={(v: any) => setParams({...params, proposedConsumablesCostPerYear: v})} suffix="USD/Yr" />
-                <InputField label={t.depreciation} value={params.proposedDepreciationYears} onChange={(v: any) => setParams({...params, proposedDepreciationYears: v})} suffix="Years" />
+                <InputField label={t.powerSupply} type="text" value={params.proposedPowerSupplyV} onChange={(v: any) => setParams({...params, proposedPowerSupplyV: v})} suffix="V" tooltip="Required voltage for the new machine." />
+                <InputField label={t.powerConsumption} value={params.proposedPowerConsumptionKW} onChange={(v: any) => setParams({...params, proposedPowerConsumptionKW: v})} suffix="kW" tooltip="Energy usage in kilowatts per hour for the new machine." />
+                <InputField label={t.speed} value={params.proposedSpeedSPrs} onChange={(v: any) => setParams({...params, proposedSpeedSPrs: v})} suffix="s/prs" tooltip="Target production speed measured in seconds per pair." />
+                <InputField label={t.unitPrice} value={params.proposedUnitPrice} onChange={(v: any) => setParams({...params, proposedUnitPrice: v})} suffix="USD" tooltip="The purchase price of one new unit in USD." />
+                <InputField label={t.maintenanceCost} value={params.proposedMaintenanceCostPerYear} onChange={(v: any) => setParams({...params, proposedMaintenanceCostPerYear: v})} suffix="USD/Yr" tooltip="Estimated annual cost for repairs and maintenance of the new machine." />
+                <InputField label={t.consumablesCost} value={params.proposedConsumablesCostPerYear} onChange={(v: any) => setParams({...params, proposedConsumablesCostPerYear: v})} suffix="USD/Yr" tooltip="Estimated annual cost for parts that need regular replacement." />
+                <InputField label={t.depreciation} value={params.proposedDepreciationYears} onChange={(v: any) => setParams({...params, proposedDepreciationYears: v})} suffix="Years" tooltip="Number of years over which the new machine value is written off." />
               </div>
             </div>
 
@@ -265,14 +359,14 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-bold text-zinc-500">{t.ieData || 'IE Data'}</h4>
-                  <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.currentCT} onChange={(v: any) => setParams({...params, currentCT: v, currentPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" />
-                  <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.currentPPH} onChange={(v: any) => setParams({...params, currentPPH: v})} suffix="prs/hr" />
-                  <InputField label={t.manpowerDemand} value={params.currentManpower} onChange={(v: any) => setParams({...params, currentManpower: v})} suffix="prs" />
+                  <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.currentCT} onChange={(v: any) => setParams({...params, currentCT: v, currentPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" tooltip="Time taken to complete one unit of work in the current manual process." />
+                  <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.currentPPH} onChange={(v: any) => setParams({...params, currentPPH: v})} suffix="prs/hr" tooltip="Calculated output based on current cycle time." />
+                  <InputField label={t.manpowerDemand} value={params.currentManpower} onChange={(v: any) => setParams({...params, currentManpower: v})} suffix="prs" tooltip="Number of operators required for the current manual process." />
                 </div>
                 <div className="space-y-4 pt-4 border-t border-zinc-800/50">
                   <h4 className="text-[10px] font-bold text-zinc-500">{t.qualityData || 'Quality Data'}</h4>
-                  <InputField label={t.rft || 'RFT %'} value={params.currentRFT} onChange={(v: any) => setParams({...params, currentRFT: v})} suffix="%" />
-                  <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.currentDefectRate} onChange={(v: any) => setParams({...params, currentDefectRate: v})} suffix="%" />
+                  <InputField label={t.rft || 'RFT %'} value={params.currentRFT} onChange={(v: any) => setParams({...params, currentRFT: v})} suffix="%" tooltip="Right First Time percentage - measure of current quality accuracy." />
+                  <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.currentDefectRate} onChange={(v: any) => setParams({...params, currentDefectRate: v})} suffix="%" tooltip="Current percentage of units that require rework or are scrapped." />
                 </div>
               </div>
 
@@ -280,14 +374,14 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-bold text-emerald-600/70">{t.ieData || 'IE Data'}</h4>
-                  <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.proposedCT} onChange={(v: any) => setParams({...params, proposedCT: v, proposedPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" />
-                  <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.proposedPPH} onChange={(v: any) => setParams({...params, proposedPPH: v})} suffix="prs/hr" />
-                  <InputField label={t.manpowerDemand} value={params.proposedManpower} onChange={(v: any) => setParams({...params, proposedManpower: v})} suffix="prs" />
+                  <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.proposedCT} onChange={(v: any) => setParams({...params, proposedCT: v, proposedPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" tooltip="Target time to complete one unit of work with the new machine." />
+                  <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.proposedPPH} onChange={(v: any) => setParams({...params, proposedPPH: v})} suffix="prs/hr" tooltip="Target output based on proposed cycle time." />
+                  <InputField label={t.manpowerDemand} value={params.proposedManpower} onChange={(v: any) => setParams({...params, proposedManpower: v})} suffix="prs" tooltip="Number of operators required to run the new machine." />
                 </div>
                 <div className="space-y-4 pt-4 border-t border-emerald-900/30">
                   <h4 className="text-[10px] font-bold text-emerald-600/70">{t.qualityData || 'Quality Data'}</h4>
-                  <InputField label={t.rft || 'RFT %'} value={params.proposedRFT} onChange={(v: any) => setParams({...params, proposedRFT: v})} suffix="%" />
-                  <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.proposedDefectRate} onChange={(v: any) => setParams({...params, proposedDefectRate: v})} suffix="%" />
+                  <InputField label={t.rft || 'RFT %'} value={params.proposedRFT} onChange={(v: any) => setParams({...params, proposedRFT: v})} suffix="%" tooltip="Target Right First Time percentage with the new machine." />
+                  <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.proposedDefectRate} onChange={(v: any) => setParams({...params, proposedDefectRate: v})} suffix="%" tooltip="Target percentage of units requiring rework with the new machine." />
                 </div>
               </div>
             </div>
@@ -311,8 +405,8 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
 
             <div className="pt-4 border-t border-zinc-800 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InputField label={t.workingHoursPerDay || 'Working Hours / Day'} value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" />
-                <InputField label={t.localLaborCost || 'Local Labor Cost'} value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" />
+                <InputField label={t.workingHoursPerDay || 'Working Hours / Day'} value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" tooltip="Total operational hours per shift/day." />
+                <InputField label={t.localLaborCost || 'Local Labor Cost'} value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" tooltip="Average monthly salary including benefits for one operator (USD)." />
               </div>
             </div>
           </motion.div>
@@ -322,8 +416,8 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
             <h2 className="text-xs font-bold uppercase tracking-widest text-rose-500 mb-6">{t.financialMetrics || 'Financial Metrics'}</h2>
             
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
+            <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 items-start">
+              <div className="lg:col-span-5 space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-xl">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.manual?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
@@ -337,7 +431,46 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
                 </div>
               </div>
 
-              <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
+              {/* Savings Delta Column */}
+              <div className="lg:col-span-1 flex flex-col items-center justify-center h-full py-8 gap-12">
+                <div className="flex flex-col items-center gap-1">
+                  <div className={cn(
+                    "p-1 rounded-full",
+                    (advancedResults?.savings?.laborSaving || 0) > 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-rose-500/20 text-rose-500"
+                  )}>
+                    {(advancedResults?.savings?.laborSaving || 0) > 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+                  </div>
+                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.laborSaving || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
+                    {Math.abs(((advancedResults?.machine?.annualLaborCost / advancedResults?.manual?.annualLaborCost) - 1) * 100).toFixed(0)}%
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center gap-1">
+                  <div className={cn(
+                    "p-1 rounded-full",
+                    (advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-rose-500/20 text-rose-500"
+                  )}>
+                    {(advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+                  </div>
+                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
+                    ${Math.abs(advancedResults?.savings?.totalAnnualSaving || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center gap-1">
+                  <div className={cn(
+                    "p-1 rounded-full",
+                    (advancedResults?.savings?.fobImpact || 0) > 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-rose-500/20 text-rose-500"
+                  )}>
+                    {(advancedResults?.savings?.fobImpact || 0) > 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+                  </div>
+                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.fobImpact || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
+                    ${Math.abs(advancedResults?.savings?.fobImpact || 0).toFixed(3)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="lg:col-span-5 space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded-xl">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.machine?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
@@ -352,16 +485,10 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-zinc-800">
-              <button onClick={handleGenerateInfographic} disabled={isGeneratingInfographic} className="factory-btn bg-purple-600 hover:bg-purple-500 text-white border-purple-500 flex items-center gap-2 shadow-lg shadow-purple-900/20 h-10 px-5">
-                <ImageIcon size={16} /> {isGeneratingInfographic ? 'Generating...' : t.aiInfographic || 'AI Infographic'}
-              </button>
-              <button onClick={handleExportPDF} className="factory-btn bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700 flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
-                <Download size={16} /> {t.exportPdf || 'Export PDF'}
-              </button>
-              <button onClick={handleExportExcel} className="factory-btn bg-emerald-800 hover:bg-emerald-700 text-white border-emerald-700 flex items-center gap-2 shadow-lg shadow-black/20 h-10 px-5">
-                <FileSpreadsheet size={16} /> {t.exportExcel || 'Export Excel'}
-              </button>
+            <div className="flex justify-center pt-6 mt-6 border-t border-zinc-800">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 italic">
+                {t.useHeaderActions || 'Use Header Actions for Export & AI Analysis'}
+              </div>
             </div>
           </motion.div>
         )}

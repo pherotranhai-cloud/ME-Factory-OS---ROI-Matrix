@@ -11,22 +11,22 @@
 
 @layer components {
   .factory-border {
-    @apply border border-[#333] border-solid;
+    @apply border border-zinc-800/50 border-solid;
   }
   .factory-bg {
-    @apply bg-[#141414];
+    @apply bg-zinc-900/50 backdrop-blur-sm;
   }
   .factory-input {
-    @apply bg-[#1a1a1a] border border-[#333] text-[#e0e0e0] px-3 py-2 focus:border-emerald-500 outline-none transition-colors font-mono text-sm;
+    @apply bg-zinc-900/80 border border-zinc-800 text-[#e0e0e0] px-3 py-2 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all font-mono text-sm rounded-lg;
   }
   .factory-label {
-    @apply text-[10px] uppercase tracking-wider text-[#888] font-bold mb-1 block;
+    @apply text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1.5 block;
   }
   .factory-btn {
-    @apply px-4 py-2 bg-[#222] border border-[#444] text-[#ccc] hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all uppercase text-xs font-bold tracking-widest disabled:opacity-50;
+    @apply px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white hover:border-zinc-700 transition-all uppercase text-[10px] font-bold tracking-widest disabled:opacity-50 rounded-lg shadow-sm;
   }
   .factory-card {
-    @apply bg-[#111] border border-[#222] p-6;
+    @apply bg-zinc-900/50 border border-zinc-800/50 p-6 rounded-2xl shadow-md backdrop-blur-md;
   }
 }
 

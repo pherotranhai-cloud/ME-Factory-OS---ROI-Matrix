@@ -14,7 +14,7 @@ interface InfographicProps {
 export const Infographic: React.FC<InfographicProps> = ({ data, params, results }) => {
   return (
     <div 
-      id="infographic-capture"
+      id="infographic-card"
       className="w-[800px] bg-gradient-to-br from-zinc-900 to-black p-12 border-4 border-emerald-500/30 rounded-3xl shadow-2xl relative overflow-hidden"
     >
       {/* Background Accents */}

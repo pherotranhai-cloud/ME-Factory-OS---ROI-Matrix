@@ -13,6 +13,12 @@ import { TRANSLATIONS } from './constants/translations';
 import html2canvas from 'html2canvas';
 
 import { exportToExcel } from './utils/excelExport';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export default function App() {
   const {
@@ -33,6 +39,7 @@ export default function App() {
   } = useAppState();
 
   const [editingReportData, setEditingReportData] = React.useState<any>(null);
+  const [viewMode, setViewMode] = React.useState<'form' | 'preview'>('form');
   const [aiPrompt, setAiPrompt] = React.useState('');
   const [isGeneratingInfographic, setIsGeneratingInfographic] = React.useState(false);
   const [infographicData, setInfographicData] = React.useState<any>(null);
@@ -159,35 +166,45 @@ export default function App() {
       
       const data = await response.json();
       setInfographicData(data);
-
-      // Wait for React to render the infographic component
-      setTimeout(async () => {
-        const element = document.getElementById('infographic-capture');
-        if (element) {
-          const canvas = await html2canvas(element, {
-            backgroundColor: '#000000',
-            scale: 2,
-            logging: false,
-            useCORS: true
-          });
-          
-          const image = canvas.toDataURL('image/jpeg', 0.9);
-          const link = document.createElement('a');
-          link.href = image;
-          link.download = `Infographic_${params.equipmentName || 'CAPEX'}.jpg`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Clear infographic data after capture
-          setInfographicData(null);
-        }
-      }, 500);
     } catch (err: any) {
       console.error(err);
       alert('Infographic generation failed: ' + err.message);
     } finally {
       setIsGeneratingInfographic(false);
+    }
+  };
+
+  const handleDownloadInfographic = async () => {
+    const element = document.getElementById('infographic-card');
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#000000',
+        scale: 2,
+        logging: false,
+        useCORS: true
+      });
+      
+      const image = canvas.toDataURL('image/png', 1.0);
+      
+      // Download the image
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `Infographic_${params.equipmentName || 'CAPEX'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Add to uploadedImages state
+      setUploadedImages([...(uploadedImages || []), image].slice(0, 3));
+      
+      // Clear infographic data after download
+      setInfographicData(null);
+      alert('Infographic downloaded and added to report images.');
+    } catch (err: any) {
+      console.error('Capture Error:', err);
+      alert('Failed to capture infographic: ' + err.message);
     }
   };
 
@@ -215,6 +232,7 @@ export default function App() {
           resetForm(); 
           setEditingReportData(null);
           setEditingReportId(null);
+          setViewMode('form');
         }} 
         t={t} 
       />
@@ -223,6 +241,7 @@ export default function App() {
         <Header 
           activeTab={activeTab} 
           t={t} 
+          viewMode={viewMode}
           advancedResults={advancedResults} 
           isEvaluating={isEvaluating} 
           isSaving={isSaving} 
@@ -239,6 +258,53 @@ export default function App() {
         />
 
         <div className="p-8">
+          {infographicData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-white">AI Infographic Preview</h2>
+                  <button 
+                    onClick={() => setInfographicData(null)}
+                    className="text-zinc-500 hover:text-white transition-colors"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex justify-center mb-8 overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+                  <div className="scale-[0.6] sm:scale-[0.7] md:scale-[0.8] lg:scale-[1.0] origin-center py-12">
+                    <Infographic 
+                      data={infographicData} 
+                      params={params} 
+                      results={advancedResults} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 justify-end">
+                  <button
+                    onClick={() => setInfographicData(null)}
+                    className="px-6 py-3 rounded-xl border border-zinc-700 text-zinc-300 font-bold hover:bg-zinc-800 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDownloadInfographic}
+                    className="px-8 py-3 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Image
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} onEditReport={(report: any) => {
             setEditingReportData(report);
             setProjectName(report.machine_name || 'ROI Project');
@@ -246,6 +312,7 @@ export default function App() {
             setAiEvaluation(report.ai_evaluation);
             setUploadedImages(report.image_url);
             setEditingReportId(report.id);
+            setViewMode('form');
             setActiveTab('roi');
           }} />}
           {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={(report: any) => { 
@@ -255,12 +322,30 @@ export default function App() {
             setAiEvaluation(report.ai_evaluation);
             setUploadedImages(report.image_url);
             setEditingReportId(report.id);
+            setViewMode('form');
             setActiveTab('roi'); 
           }} />}
           {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} />}
           {activeTab === 'roi' && (
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-5">
+            <div className="max-w-5xl mx-auto">
+              <div className="flex justify-center mb-8">
+                <div className="bg-zinc-900/50 p-1 rounded-lg border border-zinc-800 inline-flex">
+                  <button 
+                    onClick={() => setViewMode('form')}
+                    className={cn("px-6 py-2 text-sm font-bold uppercase tracking-widest rounded-md transition-all", viewMode === 'form' ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300")}
+                  >
+                    Form Input
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('preview')}
+                    className={cn("px-6 py-2 text-sm font-bold uppercase tracking-widest rounded-md transition-all", viewMode === 'preview' ? "bg-blue-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300")}
+                  >
+                    Report Preview
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === 'form' ? (
                 <ROICalculatorForm 
                   t={t} 
                   params={params} 
@@ -272,49 +357,43 @@ export default function App() {
                     setAiPrompt(`Tôi đang xem xét dự án ${params.equipmentName || 'này'}. Dữ liệu ROI: ${JSON.stringify({ params, advancedResults })}. Cho tôi xin đánh giá nhanh, trực diện theo góc nhìn quản lý nhà máy.`);
                     setActiveTab('ai');
                   }}
-                  handleExportPDF={handleExportPDF}
-                  handleExportExcel={handleExportExcel}
-                  handleGenerateInfographic={handleGenerateInfographic}
-                  isGeneratingInfographic={isGeneratingInfographic}
                 />
-              </div>
-              <div className="lg:col-span-7 space-y-6">
-                <AIEvaluation aiEvaluation={aiEvaluation} />
+              ) : (
+                <div className="space-y-8 pb-20">
+                  <AIEvaluation aiEvaluation={aiEvaluation} />
 
-                {advancedResults && (
-                  <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 overflow-auto max-h-[800px]">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Report Preview</h3>
-                      <span className="text-[10px] text-zinc-500">A4 Format</span>
+                  {advancedResults ? (
+                    <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 shadow-2xl flex flex-col items-center">
+                      <div className="w-full flex items-center justify-between mb-6 border-b border-zinc-800 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                          <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Live Report Preview</h3>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-mono">A4 STANDARD FORMAT</span>
+                      </div>
+                      
+                      <div className="bg-white rounded shadow-2xl overflow-hidden transform transition-transform hover:scale-[1.01] duration-500">
+                        <CAPEXReportTemplate 
+                          params={params} 
+                          results={advancedResults} 
+                          aiEvaluation={aiEvaluation} 
+                          t={t} 
+                          uploadedImages={uploadedImages} 
+                          lang={lang} 
+                        />
+                      </div>
                     </div>
-                    <div className="scale-[0.8] origin-top-left">
-                      <CAPEXReportTemplate 
-                        params={params} 
-                        results={advancedResults} 
-                        aiEvaluation={aiEvaluation} 
-                        t={t} 
-                        uploadedImages={uploadedImages} 
-                        lang={lang} 
-                      />
+                  ) : (
+                    <div className="text-center py-20 bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-800">
+                      <p className="text-zinc-500 italic">Please complete the form to see the report preview.</p>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
       </main>
-
-      {/* Hidden Infographic for Capture */}
-      {infographicData && (
-        <div className="fixed -left-[2000px] top-0">
-          <Infographic 
-            data={infographicData} 
-            params={params} 
-            results={advancedResults} 
-          />
-        </div>
-      )}
     </div>
   );
 }
