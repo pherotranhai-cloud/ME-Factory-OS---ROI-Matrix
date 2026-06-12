@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../../config/api';
 
 export const AIChatbot = ({ lang, t, params, advancedResults, initialPrompt, setAiPrompt }: any) => {
   const [messages, setMessages] = useState<any[]>([{ role: 'assistant', content: 'How can I help you with your ROI analysis today?' }]);
@@ -32,7 +33,7 @@ export const AIChatbot = ({ lang, t, params, advancedResults, initialPrompt, set
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

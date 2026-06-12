@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { API_BASE_URL } from '../../config/api';
 
 export const ReportHistory = ({ lang, t, onEditReport, refreshTrigger }: any) => {
   const [reports, setReports] = useState<any[]>([]);
@@ -27,7 +28,7 @@ export const ReportHistory = ({ lang, t, onEditReport, refreshTrigger }: any) =>
         }
       } catch (err) {
         // API fallback
-        fetch('/api/roi-reports')
+        fetch(`${API_BASE_URL}/roi-reports`)
           .then(res => res.json())
           .then(data => {
             setReports(Array.isArray(data) ? data : []);

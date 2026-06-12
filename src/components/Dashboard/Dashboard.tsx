@@ -27,6 +27,8 @@ import { CAPEXReportTemplate, generatePDF } from '../Reports/PDFTemplate';
 import { TRANSLATIONS } from '../../constants/translations';
 import { calculateAdvancedROI } from '../../hooks/useAppState';
 
+import { API_BASE_URL } from '../../config/api';
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -52,7 +54,7 @@ export const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { re
 
   const handleUpdate = async (newStatus: string) => {
     try {
-      await fetch(`/api/roi-reports/${reportId}/status`, {
+      await fetch(`${API_BASE_URL}/roi-reports/${reportId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -108,9 +110,9 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
     setIsLoading(true);
     try {
       const [statsRes, historyRes, reportsRes] = await Promise.all([
-        fetch('/api/dashboard/analytics').catch(() => null),
-        fetch('/api/report-history').catch(() => null),
-        fetch('/api/roi-reports').catch(() => null)
+        fetch(`${API_BASE_URL}/dashboard/analytics`).catch(() => null),
+        fetch(`${API_BASE_URL}/report-history`).catch(() => null),
+        fetch(`${API_BASE_URL}/roi-reports`).catch(() => null)
       ]);
 
       const safeJson = async (res: Response | null, fallback: any) => {
@@ -141,7 +143,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`/api/roi-reports/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE_URL}/roi-reports/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchDashboardData();
         setDeleteConfirm(null);

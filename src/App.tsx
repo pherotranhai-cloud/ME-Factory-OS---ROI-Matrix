@@ -15,6 +15,7 @@ import html2canvas from 'html2canvas';
 import { exportToExcel } from './utils/excelExport';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { API_BASE_URL } from './config/api';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -61,7 +62,7 @@ export default function App() {
     setIsSaving(true);
     try {
       const isUpdate = !!editingReportData?.id;
-      const url = isUpdate ? `/api/roi-reports/${editingReportData.id}` : '/api/roi-reports';
+      const url = isUpdate ? `${API_BASE_URL}/roi-reports/${editingReportData.id}` : `${API_BASE_URL}/roi-reports`;
       const method = isUpdate ? 'PATCH' : 'POST';
       const projectId = editingReportData?.project_id || `CAPEX-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
@@ -128,7 +129,7 @@ export default function App() {
         - summary: A 2-sentence executive summary (nói thẳng vào vấn đề tiền và người, phong cách sếp nhà máy).
       `;
 
-      const response = await fetch('/api/evaluate', {
+      const response = await fetch(`${API_BASE_URL}/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
@@ -153,7 +154,7 @@ export default function App() {
     if (!advancedResults) return;
     setIsGeneratingInfographic(true);
     try {
-      const response = await fetch('/api/infographic', {
+      const response = await fetch(`${API_BASE_URL}/infographic`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
