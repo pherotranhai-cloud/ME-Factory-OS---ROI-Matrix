@@ -263,23 +263,16 @@ async function startServer() {
   app.get("/api/report-history", async (req, res) => {
     try {
       if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
-      const { data: history, error } = await supabase
-        .from('report_history')
-        .select('*, roi_reports(machine_name, project_id)')
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const { data, error } = await supabase
+        .from('roi_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
 
-      const formattedHistory = history.map((h: any) => ({
-        ...h,
-        machine_name: h.roi_reports?.machine_name,
-        project_id: h.roi_reports?.project_id,
-        roi_reports: undefined
-      }));
-
-      res.json(formattedHistory);
+      res.json(data);
     } catch (err) {
+      console.error("History Error details:", err);
       res.status(500).json({ error: "Failed to fetch history" });
     }
   });
