@@ -5,28 +5,28 @@
 
 @layer base {
   body {
-    @apply bg-[#0a0a0a] text-[#e0e0e0] font-sans antialiased;
+    @apply bg-ims-light text-ims-dark font-sans antialiased;
   }
 }
 
 @layer components {
-  .factory-border {
-    @apply border border-zinc-800/50 border-solid;
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 32px 0 rgba(0, 109, 119, 0.15);
   }
-  .factory-bg {
-    @apply bg-zinc-900/50 backdrop-blur-sm;
-  }
+
   .factory-input {
-    @apply bg-zinc-900/80 border border-zinc-800 text-[#e0e0e0] px-3 py-2 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all font-mono text-sm rounded-lg;
+    @apply bg-white/50 border border-ims-primary/20 text-[#002D32] px-4 py-3 focus:border-ims-primary focus:ring-2 focus:ring-ims-primary/30 outline-none transition-all font-mono text-sm rounded-xl;
   }
+
   .factory-label {
-    @apply text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1.5 block;
+    @apply text-xs uppercase tracking-wider text-[#006D77] font-bold mb-2 block;
   }
+
   .factory-btn {
-    @apply px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white hover:border-zinc-700 transition-all uppercase text-[10px] font-bold tracking-widest disabled:opacity-50 rounded-lg shadow-sm;
-  }
-  .factory-card {
-    @apply bg-zinc-900/50 border border-zinc-800/50 p-6 rounded-2xl shadow-md backdrop-blur-md;
+    @apply px-6 py-3 bg-[#006D77] text-white hover:bg-[#005259] transition-all uppercase text-xs font-bold tracking-widest disabled:opacity-50 rounded-xl shadow-[0_4px_14px_0_rgba(0,109,119,0.39)] hover:shadow-[0_6px_20px_rgba(0,109,119,0.23)] hover:-translate-y-0.5 transform;
   }
 }
 
@@ -35,23 +35,12 @@
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: rgba(0, 109, 119, 0.2);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #444;
-}
-
-/* Light Mode Filter */
-html.light-mode {
-  filter: invert(1) hue-rotate(180deg);
-  background: #f5f5f5;
-}
-html.light-mode img,
-html.light-mode video,
-html.light-mode iframe,
-html.light-mode .no-invert {
-  filter: invert(1) hue-rotate(180deg);
+  background: rgba(0, 109, 119, 0.5);
 }

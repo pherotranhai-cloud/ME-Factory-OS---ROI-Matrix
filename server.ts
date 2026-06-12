@@ -9,9 +9,17 @@ import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import serverless from "serverless-http";
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
+
+import { createClient } from "@supabase/supabase-js";
 
 const isProd = process.env.NODE_ENV === "production" || process.env.DATABASE_URL;
+
+// Supabase Connection
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 // Database Connection
 let db: any;
@@ -208,6 +216,25 @@ async function startServer() {
   app.post("/api/reports", async (req, res) => {
     try {
       const { project_name, current_params, new_params, results, ai_evaluation, image_url } = req.body;
+      
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("reports")
+          .insert({
+            project_name,
+            current_params: current_params || {}, // JSONB
+            new_params: new_params || {},         // JSONB
+            results: results || {},               // JSONB
+            ai_evaluation: ai_evaluation || {},   // JSONB
+            image_url
+          })
+          .select("id")
+          .single();
+          
+        if (error) throw error;
+        return res.json({ id: data.id });
+      }
+
       const result = await query(
         "INSERT INTO reports (project_name, current_params, new_params, results, ai_evaluation, image_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
         [project_name, JSON.stringify(current_params), JSON.stringify(new_params), JSON.stringify(results), JSON.stringify(ai_evaluation), image_url]
@@ -221,6 +248,17 @@ async function startServer() {
   app.get("/api/roi-reports", async (req, res) => {
     try {
       const { search } = req.query;
+      
+      if (supabase) {
+        let queryBuilder = supabase.from('roi_reports').select('*').order('created_at', { ascending: false });
+        if (search) {
+          queryBuilder = queryBuilder.or(`machine_name.ilike.%${search}%,project_id.ilike.%${search}%,vendor.ilike.%${search}%,shoe_model.ilike.%${search}%`);
+        }
+        const { data, error } = await queryBuilder;
+        if (error) throw error;
+        return res.json(data);
+      }
+
       let q = "SELECT * FROM roi_reports";
       const params: any[] = [];
       if (search) {
@@ -251,6 +289,48 @@ async function startServer() {
         ai_verdict, ai_evaluation, status, tags, image_url, form_data 
       } = req.body;
 
+      if (supabase) {
+        // 1. Create or Find User
+        let user_id = null;
+        const { data: user } = await supabase.from('users').select('id').limit(1).maybeSingle();
+        
+        if (user) {
+            user_id = user.id;
+        } else {
+            const { data: newUser } = await supabase.from('users').insert({
+                name: 'System Operator', 
+                email: 'operator@laiyih.com', 
+                role: 'Operator'
+            }).select('id').single();
+            user_id = newUser?.id || null;
+        }
+
+        // 2. Insert into roi_reports
+        const { data, error } = await supabase
+          .from("roi_reports")
+          .insert({
+            user_id,
+            project_id, machine_name, shoe_model, vendor, investment_cost,
+            labor_saving_cost, energy_saving_cost, other_savings,
+            annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
+            ai_verdict, ai_evaluation: ai_evaluation || {}, status: status || 'Draft',
+            tags: tags || [], image_url: image_url || [], form_data: form_data || {}
+          })
+          .select("id")
+          .single();
+          
+        if (error) throw error;
+        
+        // 3. Insert into report_embeddings
+        const summaryText = `Project ${project_id} | ${machine_name} by ${vendor}. Verdict: ${ai_verdict || 'N/A'}. Annual Savings: $${annual_savings || 0}`;
+        await supabase.from('report_embeddings').insert({
+            report_id: data.id,
+            summary_text: summaryText
+        });
+
+        return res.json({ id: data.id });
+      }
+
       const result = await query(`
         INSERT INTO roi_reports (
           project_id, machine_name, shoe_model, vendor, investment_cost, 
@@ -266,8 +346,9 @@ async function startServer() {
       ]);
 
       res.json({ id: (result as any).insertId || (result as any)[0]?.id });
-    } catch (err) {
-      res.status(500).json({ error: "Failed to save ROI report" });
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to save ROI report", details: err.message });
     }
   });
 
@@ -280,6 +361,33 @@ async function startServer() {
         annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
         ai_verdict, ai_evaluation, status, tags, image_url, form_data 
       } = req.body;
+
+      if (supabase) {
+        const { error } = await supabase
+          .from("roi_reports")
+          .update({
+            project_id, machine_name, shoe_model, vendor, investment_cost,
+            labor_saving_cost, energy_saving_cost, other_savings,
+            annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
+            ai_verdict, ai_evaluation: ai_evaluation || {}, status: status || 'Draft',
+            tags: tags || [], image_url: image_url || [], form_data: form_data || {}
+          })
+          .eq("id", id);
+          
+        if (error) throw error;
+        
+        // Update report_embeddings summary if it exists, or insert if it doesn't
+        // We can do an upsert but we don't have the primary key of embeddings readily available, 
+        //, so we can delete the existing one and recreate.
+        const summaryText = `Project ${project_id} | ${machine_name} by ${vendor}. Verdict: ${ai_verdict || 'N/A'}. Annual Savings: $${annual_savings || 0}`;
+        await supabase.from('report_embeddings').delete().eq('report_id', id);
+        await supabase.from('report_embeddings').insert({
+            report_id: id,
+            summary_text: summaryText
+        });
+
+        return res.json({ success: true });
+      }
 
       await query(`
         UPDATE roi_reports SET
@@ -297,8 +405,9 @@ async function startServer() {
       ]);
 
       res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: "Failed to update ROI report" });
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to update ROI report", details: err.message });
     }
   });
 
@@ -331,6 +440,111 @@ async function startServer() {
       res.json(history);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch history" });
+    }
+  });
+
+  app.get("/api/dashboard/analytics", async (req, res) => {
+    try {
+      if (supabase) {
+        const { data: reports, error } = await supabase.from('roi_reports').select('*');
+        if (error) throw error;
+
+        let totalInvestment = 0;
+        let avgROI = 0;
+        let avgFobImpact = 0;
+        let activeCount = 0;
+        let roiSum = 0;
+        let roiCount = 0;
+        let fobSum = 0;
+        let fobCount = 0;
+
+        const distribution: Record<string, number> = {};
+        const vendors: Record<string, number> = {};
+        const investmentVsSaving: any[] = [];
+        const roiDistribution: any[] = [];
+
+        for (const report of reports || []) {
+          // Status distribution
+          const status = report.status || 'Draft';
+          distribution[status] = (distribution[status] || 0) + 1;
+
+          // Vendor investment
+          const vendor = report.vendor || 'Unknown';
+          vendors[vendor] = (vendors[vendor] || 0) + (Number(report.investment_cost) || 0);
+
+          // Check if active or approved
+          if (status !== 'Rejected') { // Or define active logic
+            activeCount++;
+          }
+
+          if (status === 'Approved' || status === 'Active' || status === 'Pending') {
+            totalInvestment += Number(report.investment_cost) || 0;
+          }
+
+          if (report.roi_months) {
+            roiSum += Number(report.roi_months);
+            roiCount++;
+          }
+          if (report.fob_impact) {
+            // Negative fob_impact generally means savings
+            fobSum += Number(report.fob_impact);
+            fobCount++;
+          }
+
+          investmentVsSaving.push({
+            name: report.machine_name || 'Unnamed Project',
+            investment: Number(report.investment_cost) || 0,
+            savings: Number(report.annual_savings) || 0
+          });
+
+          roiDistribution.push({
+            name: report.machine_name || 'Unnamed Project',
+            roi: Number(report.roi_months) || 0
+          });
+        }
+
+        if (roiCount > 0) avgROI = roiSum / roiCount;
+        if (fobCount > 0) avgFobImpact = fobSum / fobCount;
+
+        return res.json({
+          topStats: {
+            totalInvestment,
+            avgROI,
+            totalFOBSavings: avgFobImpact,
+            activeProjects: activeCount
+          },
+          statusDistribution: Object.entries(distribution).map(([name, value]) => ({ name, value })),
+          investmentVsSaving,
+          vendorInvestment: Object.entries(vendors).map(([name, value]) => ({ name, value })),
+          roiDistribution
+        });
+      }
+
+      // Fallback API if no Supabase (matching old SQLite structure just in case)
+      const stats = await queryOne(`SELECT SUM(investment_cost) as total_investment FROM roi_reports WHERE status IN ('Approved', 'Implemented')`);
+      const activeCount = await queryOne(`SELECT COUNT(*) as count FROM roi_reports WHERE status != 'Rejected'`);
+      const fobImpact = await queryOne(`SELECT AVG(fob_impact) as avg_fob_impact FROM roi_reports`);
+      const roiMonths = await queryOne(`SELECT AVG(roi_months) as avg_roi FROM roi_reports`);
+      
+      const distributionQuery: any[] = await query(`SELECT status as name, COUNT(*) as value FROM roi_reports GROUP BY status`) as any[];
+      const vendorQuery: any[] = await query(`SELECT vendor as name, SUM(investment_cost) as value FROM roi_reports GROUP BY vendor`) as any[];
+      const investmentVsSavingQuery: any[] = await query(`SELECT machine_name as name, investment_cost as investment, annual_savings as savings FROM roi_reports ORDER BY created_at DESC LIMIT 10`) as any[];
+      const roiDistQuery: any[] = await query(`SELECT machine_name as name, roi_months as roi FROM roi_reports ORDER BY created_at DESC LIMIT 10`) as any[];
+
+      res.json({
+        topStats: {
+          totalInvestment: Number(stats?.total_investment) || 0,
+          avgROI: Number(roiMonths?.avg_roi) || 0,
+          totalFOBSavings: Number(fobImpact?.avg_fob_impact) || 0,
+          activeProjects: Number(activeCount?.count) || 0
+        },
+        statusDistribution: distributionQuery || [],
+        investmentVsSaving: investmentVsSavingQuery || [],
+        vendorInvestment: vendorQuery || [],
+        roiDistribution: roiDistQuery || []
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch analytics dashboard stats" });
     }
   });
 
@@ -393,18 +607,25 @@ async function startServer() {
   app.post("/api/evaluate", async (req, res) => {
     try {
       const { prompt } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "Gemini API Key not configured" });
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "OpenAI API Key not configured" });
 
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: { responseMimeType: "application/json" }
+      const openai = new OpenAI({ apiKey });
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.4-mini-2026-03-17",
+        messages: [
+          { 
+            role: "system", 
+            content: "You are a Senior Industrial Investment Consultant and Manufacturing Excellence Strategy Expert. You must evaluate the provided Industrial Engineering (IE) and financial data objectively, rigorously, and without emotion. Your tone must be strictly corporate, analytical, authoritative, and professional. Completely avoid informal vocabulary, tech slang, and colloquialisms. Use rigorous manufacturing terminology such as Headcount Optimization, Payback Period, Opex, Capex, Line Balancing, and Throughput Constraints. When analyzing mathematically unrealistic data (e.g., disproportionate ROI or headcount reduction compared to Capex), explicitly critique it as a data-driven anomaly requiring validation rather than labeling it as 'fake' or 'virtual'. You MUST respond with a JSON object containing the keys: 'summary', 'verdict', 'pros', 'cons', and 'risks'." 
+          },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" }
       });
-      res.json(JSON.parse(response.text || "{}"));
+      const responseText = response.choices[0]?.message?.content || "{}";
+      res.json(JSON.parse(responseText));
     } catch (err: any) {
-      console.error("Gemini Error:", err);
+      console.error("OpenAI Error:", err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -412,8 +633,8 @@ async function startServer() {
   app.post("/api/infographic", async (req, res) => {
     try {
       const { params, results } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "Gemini API Key not configured" });
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "OpenAI API Key not configured" });
 
       const prompt = `
         Dựa vào dữ liệu dự án CAPEX sau, hãy tạo nội dung ngắn gọn để làm Infographic báo cáo.
@@ -429,15 +650,19 @@ async function startServer() {
         }
       `;
 
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: { responseMimeType: "application/json" }
+      const openai = new OpenAI({ apiKey });
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.4-mini-2026-03-17",
+        messages: [
+          { role: "system", content: "You are an industrial infographic generator. Always return valid JSON." },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" }
       });
-      res.json(JSON.parse(response.text || "{}"));
+      const responseText = response.choices[0]?.message?.content || "{}";
+      res.json(JSON.parse(responseText));
     } catch (err: any) {
-      console.error("Infographic Error:", err);
+      console.error("OpenAI Infographic Error:", err);
       res.status(500).json({ error: err.message });
     }
   });

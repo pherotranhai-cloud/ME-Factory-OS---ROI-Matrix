@@ -60,7 +60,7 @@ export const CAPEXReportTemplate: React.FC<PDFTemplateProps> = ({ params, result
       </div>
       <div className="text-right">
         <div className="flex flex-col items-end gap-1 mb-1">
-          <img src="/laiyih-logo.png" alt="Laiyih Logo" className="h-6 w-auto object-contain mb-1" />
+          <Cpu className="h-6 w-auto mb-1 text-emerald-600" />
           <span className="font-mono font-black text-xl tracking-tighter italic text-emerald-600">LY ROI MATRIX</span>
         </div>
         <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">Manufacturing Excellence</p>

@@ -6,6 +6,7 @@ import ws from "ws"; // 1. Import thư viện WebSocket
 import { v2 as cloudinary } from "cloudinary";
 import serverless from "serverless-http";
 import { GoogleGenAI } from "@google/genai";
+import { createCanvas, loadImage } from "canvas";
 
 // 2. DÒNG MA THUẬT: Cấp phép cho NeonDB dùng WebSocket trên Netlify
 neonConfig.webSocketConstructor = ws; 
@@ -392,6 +393,90 @@ ${JSON.stringify(contextData || {}, null, 2)}`;
     res.json({ text: response.text });
   } catch (err: any) {
     console.error("Chat API Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/infographic", async (req, res) => {
+  try {
+    const { machineName, roiMonths, totalAnnualSaving, manpowerCurrent, manpowerProposed, verdict } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Gemini API Key not configured" });
+
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `A clean, professional, corporate manufacturing infographic background. Distinct visual blocks with empty spaces for text overlays. 
+Top Title area for 'CAPEX Investment Executive Summary'. 
+Visual 1 area: A prominent circular gauge or timeline for ROI. 
+Visual 2 area: A large up-arrow with a dollar sign for Total Annual Saving. 
+Visual 3 area: A comparison infographic for Manpower (Before vs After). 
+Visual 4 area: A block for Strategic Verdict. 
+The image should be mostly abstract and clean, with empty spaces for text overlays. High quality, vector style, corporate blue and green colors.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [{ text: prompt }],
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    let base64Image = '';
+    if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          base64Image = part.inlineData.data;
+          break;
+        }
+      }
+    }
+
+    if (!base64Image) {
+      throw new Error("Failed to generate image from Gemini");
+    }
+
+    // Load image into canvas
+    const img = await loadImage(`data:image/jpeg;base64,${base64Image}`);
+    const canvas = createCanvas(img.width, img.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    // Overlay text
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4;
+    ctx.textAlign = 'center';
+    
+    // Helper to draw text with stroke for visibility
+    const drawText = (text: string, x: number, y: number, font: string) => {
+      ctx.font = font;
+      ctx.strokeText(text, x, y);
+      ctx.fillText(text, x, y);
+    };
+
+    // Title
+    drawText(`CAPEX Investment Executive Summary: ${machineName}`, img.width / 2, img.height * 0.1, 'bold 48px sans-serif');
+
+    // ROI Months
+    drawText(`ROI: ${roiMonths} Months`, img.width * 0.25, img.height * 0.4, 'bold 64px sans-serif');
+
+    // Total Annual Saving
+    drawText(`Savings: $${totalAnnualSaving.toLocaleString()}`, img.width * 0.75, img.height * 0.4, 'bold 64px sans-serif');
+
+    // Manpower
+    drawText(`Manpower: ${manpowerCurrent} -> ${manpowerProposed}`, img.width * 0.25, img.height * 0.8, 'bold 56px sans-serif');
+
+    // Verdict
+    drawText(`Verdict: ${verdict}`, img.width * 0.75, img.height * 0.8, 'bold 48px sans-serif');
+
+    const finalBase64 = canvas.toDataURL('image/jpeg');
+    res.json({ image: finalBase64 });
+
+  } catch (err: any) {
+    console.error("Infographic API Error:", err);
     res.status(500).json({ error: err.message });
   }
 });

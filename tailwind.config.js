@@ -7,6 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
+        ims: {
+          primary: '#006D77',
+          secondary: '#83C5BE',
+          light: '#EDF6F9',
+          dark: '#002124',
+          accent: '#FFDDD2'
+        },
         emerald: {
           50: '#ecfdf5',
           100: '#d1fae5',

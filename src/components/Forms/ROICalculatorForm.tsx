@@ -39,6 +39,8 @@ const InputField = ({ label, value, onChange, type = "number", suffix, className
   </div>
 );
 
+import { supabase } from '../../lib/supabase';
+
 const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (imgs: string[]) => void, t: any }) => {
   const [uploading, setUploading] = useState(false);
 
@@ -47,32 +49,32 @@ const ImageUpload = ({ images, setImages, t }: { images: string[], setImages: (i
     if (files.length === 0) return;
 
     setUploading(true);
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'djgai7h3b';
-    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 
     try {
       const uploadPromises = files.map(async (file: File) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+        const filePath = `public/${fileName}`;
 
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-          method: 'POST',
-          body: formData
-        });
+        const { error: uploadError } = await supabase.storage
+          .from('report-images')
+          .upload(filePath, file);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || 'Upload failed');
+        if (uploadError) {
+          throw uploadError;
         }
-        const data = await response.json();
-        return data.secure_url;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('report-images')
+          .getPublicUrl(filePath);
+
+        return publicUrl;
       });
 
       const urls = await Promise.all(uploadPromises);
       setImages([...(images || []), ...urls].slice(0, 3));
     } catch (err: any) {
-      console.error("Cloudinary Upload Error:", err);
+      console.error("Supabase Upload Error:", err);
       alert('Upload failed: ' + err.message);
     } finally {
       setUploading(false);
@@ -275,21 +277,21 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
           
           return (
             <React.Fragment key={s}>
-              <div className="relative z-10 flex flex-col items-center">
+              <div className="relative z-0 flex flex-col items-center">
                 <button
                   onClick={() => setRoiStep(s)}
                   className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2",
-                    isActive ? "bg-emerald-600 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] scale-110" :
-                    isCompleted ? "bg-emerald-900/50 border-emerald-600 text-emerald-400" :
-                    "bg-zinc-900 border-zinc-800 text-zinc-600 hover:border-zinc-700"
+                    isActive ? "bg-[#006D77] border-transparent text-white shadow-lg scale-110" :
+                    isCompleted ? "bg-[#83C5BE]/30 border-[#006D77] text-[#006D77]" :
+                    "bg-white/60 border-white/60 text-[#4A6B6F] hover:border-[#006D77]/50"
                   )}
                 >
                   {isCompleted ? <Check size={18} /> : s}
                 </button>
                 <span className={cn(
                   "text-[9px] font-black uppercase tracking-widest mt-3",
-                  isActive ? "text-emerald-500" : isCompleted ? "text-emerald-700" : "text-zinc-600"
+                  isActive ? "text-[#002D32]" : isCompleted ? "text-[#006D77]/70" : "text-[#4A6B6F]"
                 )}>
                   {s === 1 ? t.generalInfo : s === 2 ? t.techSpecs : s === 3 ? t.prodData : t.financialMetrics}
                 </span>
@@ -299,10 +301,10 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
         })}
       </div>
 
-      <div className="factory-card bg-zinc-900/50 border-zinc-800/50 p-8 rounded-2xl shadow-xl backdrop-blur-md min-h-[500px]">
+      <div className="glass-card p-8 rounded-[24px] shadow-xl min-h-[500px]">
         {roiStep === 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-6">{t.generalInfo}</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-ims-primary mb-6">{t.generalInfo}</h2>
             <InputField label={t.shoeModel} type="text" value={params.shoeModel} onChange={(v: any) => setParams({...params, shoeModel: v})} tooltip="The specific model of the shoe being produced (e.g., Ultraboost 2024)." />
             <InputField label={t.date} type="date" value={params.date} onChange={(v: any) => setParams({...params, date: v})} tooltip="The date of the ROI evaluation." />
             <InputField label={t.equipment} type="text" value={params.equipmentName} onChange={(v: any) => setParams({...params, equipmentName: v})} tooltip="The name of the machine or equipment being evaluated." />
@@ -315,12 +317,12 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
 
         {roiStep === 2 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-6">{t.techSpecs}</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-ims-secondary mb-6">{t.techSpecs}</h2>
             
             <div className="grid grid-cols-2 gap-6">
               {/* Current State Column */}
-              <div className="space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2 mb-4">{t.manual}</h3>
+              <div className="space-y-4 p-6 bg-white/60 border border-white/60 rounded-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-[#006D77]/10 pb-2 mb-4">{t.manual}</h3>
                 <InputField label={t.powerSupply} type="text" value={params.currentPowerSupplyV} onChange={(v: any) => setParams({...params, currentPowerSupplyV: v})} suffix="V" tooltip="Required voltage for the manual process equipment." />
                 <InputField label={t.powerConsumption} value={params.currentPowerConsumptionKW} onChange={(v: any) => setParams({...params, currentPowerConsumptionKW: v})} suffix="kW" tooltip="Energy usage in kilowatts per hour for the manual process." />
                 <InputField label={t.speed} value={params.currentSpeedSPrs} onChange={(v: any) => setParams({...params, currentSpeedSPrs: v})} suffix="s/prs" tooltip="Current production speed measured in seconds per pair." />
@@ -331,8 +333,8 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
               </div>
 
               {/* Proposed State Column */}
-              <div className="space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2 mb-4">{t.machine}</h3>
+              <div className="space-y-4 p-6 bg-ims-primary/5 border border-ims-primary/20 rounded-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-ims-primary border-b border-ims-primary/10 pb-2 mb-4">{t.machine}</h3>
                 <InputField label={t.powerSupply} type="text" value={params.proposedPowerSupplyV} onChange={(v: any) => setParams({...params, proposedPowerSupplyV: v})} suffix="V" tooltip="Required voltage for the new machine." />
                 <InputField label={t.powerConsumption} value={params.proposedPowerConsumptionKW} onChange={(v: any) => setParams({...params, proposedPowerConsumptionKW: v})} suffix="kW" tooltip="Energy usage in kilowatts per hour for the new machine." />
                 <InputField label={t.speed} value={params.proposedSpeedSPrs} onChange={(v: any) => setParams({...params, proposedSpeedSPrs: v})} suffix="s/prs" tooltip="Target production speed measured in seconds per pair." />
@@ -351,29 +353,29 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
 
         {roiStep === 3 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-6">{t.prodData}</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-6">{t.prodData}</h2>
             
             {/* IE & Quality Data Matrix */}
             <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-6 p-4 bg-zinc-900/30 border border-zinc-800 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
+              <div className="space-y-6 p-6 bg-white/60 border border-white/60 rounded-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-[#006D77]/10 pb-2">{t.manual}</h3>
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-bold text-zinc-500">{t.ieData || 'IE Data'}</h4>
+                  <h4 className="text-[10px] font-bold text-[#4A6B6F]/80">{t.ieData || 'IE Data'}</h4>
                   <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.currentCT} onChange={(v: any) => setParams({...params, currentCT: v, currentPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" tooltip="Time taken to complete one unit of work in the current manual process." />
                   <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.currentPPH} onChange={(v: any) => setParams({...params, currentPPH: v})} suffix="prs/hr" tooltip="Calculated output based on current cycle time." />
                   <InputField label={t.manpowerDemand} value={params.currentManpower} onChange={(v: any) => setParams({...params, currentManpower: v})} suffix="prs" tooltip="Number of operators required for the current manual process." />
                 </div>
-                <div className="space-y-4 pt-4 border-t border-zinc-800/50">
-                  <h4 className="text-[10px] font-bold text-zinc-500">{t.qualityData || 'Quality Data'}</h4>
+                <div className="space-y-4 pt-4 border-t border-[#006D77]/10">
+                  <h4 className="text-[10px] font-bold text-[#4A6B6F]/80">{t.qualityData || 'Quality Data'}</h4>
                   <InputField label={t.rft || 'RFT %'} value={params.currentRFT} onChange={(v: any) => setParams({...params, currentRFT: v})} suffix="%" tooltip="Right First Time percentage - measure of current quality accuracy." />
                   <InputField label={t.totalDefectRate || 'Total Defect Rate'} value={params.currentDefectRate} onChange={(v: any) => setParams({...params, currentDefectRate: v})} suffix="%" tooltip="Current percentage of units that require rework or are scrapped." />
                 </div>
               </div>
 
-              <div className="space-y-6 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
+              <div className="space-y-6 p-6 bg-ims-primary/5 border border-ims-primary/20 rounded-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-ims-primary border-b border-ims-primary/10 pb-2">{t.machine}</h3>
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-bold text-emerald-600/70">{t.ieData || 'IE Data'}</h4>
+                  <h4 className="text-[10px] font-bold text-ims-primary/70">{t.ieData || 'IE Data'}</h4>
                   <InputField label={t.cycleTime || 'Cycle Time (CT)'} value={params.proposedCT} onChange={(v: any) => setParams({...params, proposedCT: v, proposedPPH: v > 0 ? Number((3600 / v).toFixed(2)) : 0})} suffix="s" tooltip="Target time to complete one unit of work with the new machine." />
                   <InputField label={t.piecesPerHour || 'Pieces Per Hour (PPH)'} value={params.proposedPPH} onChange={(v: any) => setParams({...params, proposedPPH: v})} suffix="prs/hr" tooltip="Target output based on proposed cycle time." />
                   <InputField label={t.manpowerDemand} value={params.proposedManpower} onChange={(v: any) => setParams({...params, proposedManpower: v})} suffix="prs" tooltip="Number of operators required to run the new machine." />
@@ -414,79 +416,78 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
 
         {roiStep === 4 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-rose-500 mb-6">{t.financialMetrics || 'Financial Metrics'}</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-red-500 mb-6">{t.financialMetrics || 'Financial Metrics'}</h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 items-start">
-              <div className="lg:col-span-5 space-y-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-xl">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border-b border-zinc-800 pb-2">{t.manual}</h3>
+              <div className="lg:col-span-5 space-y-4 p-6 bg-white/60 border border-white/60 rounded-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-[#006D77]/10 pb-2">{t.manual}</h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.manual?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualMaintenance}</span><span className="font-mono">${params.currentMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualConsumables}</span><span className="font-mono">${params.currentConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualDepreciation}</span><span className="font-mono">${(params.currentUnitPrice / (params.currentDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.manual?.materialCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.manual?.operatingCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-zinc-800"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.manual?.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.manual?.costPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualLaborCost}</span><span className="font-mono text-[#002D32]">${advancedResults?.manual?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualMaintenance}</span><span className="font-mono text-[#002D32]">${params.currentMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualConsumables}</span><span className="font-mono text-[#002D32]">${params.currentConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualDepreciation}</span><span className="font-mono text-[#002D32]">${(params.currentUnitPrice / (params.currentDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.materialCostPerPair}</span><span className="font-mono text-[#002D32]">${advancedResults?.manual?.materialCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.operatingCostPerPair}</span><span className="font-mono text-[#002D32]">${advancedResults?.manual?.operatingCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#006D77]/10"><span className="text-[#002D32]">{t.totalAnnualCost}</span><span className="font-mono text-rose-500">${advancedResults?.manual?.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold"><span className="text-[#002D32]">{t.costPerPair} (FOB)</span><span className="font-mono text-[#006D77]">${advancedResults?.manual?.costPerPair?.toFixed(4) || 0}</span></div>
                 </div>
               </div>
 
-              {/* Savings Delta Column */}
               <div className="lg:col-span-1 flex flex-col items-center justify-center h-full py-8 gap-12">
                 <div className="flex flex-col items-center gap-1">
                   <div className={cn(
-                    "p-1 rounded-full",
-                    (advancedResults?.savings?.laborSaving || 0) > 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-rose-500/20 text-rose-500"
+                    "p-2 rounded-full shadow-sm",
+                    (advancedResults?.savings?.laborSaving || 0) > 0 ? "bg-ims-secondary/20 text-ims-primary" : "bg-red-500/20 text-red-600"
                   )}>
                     {(advancedResults?.savings?.laborSaving || 0) > 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
                   </div>
-                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.laborSaving || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
+                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.laborSaving || 0) > 0 ? "text-ims-primary" : "text-red-500")}>
                     {Math.abs(((advancedResults?.machine?.annualLaborCost / advancedResults?.manual?.annualLaborCost) - 1) * 100).toFixed(0)}%
                   </span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1">
                   <div className={cn(
-                    "p-1 rounded-full",
-                    (advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-rose-500/20 text-rose-500"
+                    "p-2 rounded-full shadow-sm",
+                    (advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? "bg-ims-secondary/20 text-ims-primary" : "bg-red-500/20 text-red-600"
                   )}>
                     {(advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
                   </div>
-                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
+                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.totalAnnualSaving || 0) > 0 ? "text-ims-primary" : "text-red-500")}>
                     ${Math.abs(advancedResults?.savings?.totalAnnualSaving || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}
                   </span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1">
                   <div className={cn(
-                    "p-1 rounded-full",
-                    (advancedResults?.savings?.fobImpact || 0) > 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-rose-500/20 text-rose-500"
+                    "p-2 rounded-full shadow-sm",
+                    (advancedResults?.savings?.fobImpact || 0) > 0 ? "bg-ims-secondary/20 text-ims-primary" : "bg-red-500/20 text-red-600"
                   )}>
                     {(advancedResults?.savings?.fobImpact || 0) > 0 ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
                   </div>
-                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.fobImpact || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
+                  <span className={cn("text-[10px] font-bold", (advancedResults?.savings?.fobImpact || 0) > 0 ? "text-ims-primary" : "text-red-500")}>
                     ${Math.abs(advancedResults?.savings?.fobImpact || 0).toFixed(3)}
                   </span>
                 </div>
               </div>
 
-              <div className="lg:col-span-5 space-y-4 p-4 bg-emerald-950/10 border border-emerald-900/30 rounded-xl">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-emerald-900/50 pb-2">{t.machine}</h3>
+              <div className="lg:col-span-5 space-y-4 p-6 bg-[#006D77]/5 border border-[#006D77]/20 rounded-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#006D77] border-b border-[#006D77]/10 pb-2">{t.machine}</h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualLaborCost}</span><span className="font-mono">${advancedResults?.machine?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualMaintenance}</span><span className="font-mono">${params.proposedMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualConsumables}</span><span className="font-mono">${params.proposedConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.annualDepreciation}</span><span className="font-mono">${(params.proposedUnitPrice / (params.proposedDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.materialCostPerPair}</span><span className="font-mono">${advancedResults?.machine?.materialCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-zinc-500">{t.operatingCostPerPair}</span><span className="font-mono">${advancedResults?.machine?.operatingCostPerPair?.toFixed(4) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-emerald-900/30"><span className="text-zinc-300">{t.totalAnnualCost}</span><span className="font-mono text-rose-400">${advancedResults?.machine?.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
-                  <div className="flex justify-between text-sm font-bold"><span className="text-zinc-300">{t.costPerPair} (FOB)</span><span className="font-mono text-emerald-400">${advancedResults?.machine?.costPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualLaborCost}</span><span className="font-mono text-[#002D32]">${advancedResults?.machine?.annualLaborCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualMaintenance}</span><span className="font-mono text-[#002D32]">${params.proposedMaintenanceCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualConsumables}</span><span className="font-mono text-[#002D32]">${params.proposedConsumablesCostPerYear?.toLocaleString() || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.annualDepreciation}</span><span className="font-mono text-[#002D32]">${(params.proposedUnitPrice / (params.proposedDepreciationYears || 1))?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.materialCostPerPair}</span><span className="font-mono text-[#002D32]">${advancedResults?.machine?.materialCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#4A6B6F]">{t.operatingCostPerPair}</span><span className="font-mono text-[#002D32]">${advancedResults?.machine?.operatingCostPerPair?.toFixed(4) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#006D77]/20"><span className="text-[#002D32]">{t.totalAnnualCost}</span><span className="font-mono text-rose-500">${advancedResults?.machine?.totalAnnualCost?.toLocaleString(undefined, {maximumFractionDigits: 2}) || 0}</span></div>
+                  <div className="flex justify-between text-sm font-bold"><span className="text-[#002D32]">{t.costPerPair} (FOB)</span><span className="font-mono text-[#006D77]">${advancedResults?.machine?.costPerPair?.toFixed(4) || 0}</span></div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-center pt-6 mt-6 border-t border-zinc-800">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 italic">
+            <div className="flex justify-center pt-6 mt-6 border-t border-[#006D77]/10">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] italic">
                 {t.useHeaderActions || 'Use Header Actions for Export & AI Analysis'}
               </div>
             </div>
@@ -505,7 +506,7 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
           <button 
             onClick={() => setRoiStep(Math.min(4, roiStep + 1))}
             disabled={roiStep === 4}
-            className="factory-btn bg-emerald-600 text-white border-emerald-500 disabled:opacity-30"
+            className="factory-btn disabled:opacity-30"
           >
             {t.next}
           </button>

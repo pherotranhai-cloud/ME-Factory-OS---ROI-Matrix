@@ -33,14 +33,14 @@ function cn(...inputs: ClassValue[]) {
 
 export const StatusBadge = ({ status }: { status: string }) => {
   const colors: any = {
-    'Draft': 'bg-zinc-800 text-zinc-400 border-zinc-700',
-    'Pending': 'bg-amber-900/30 text-amber-500 border-amber-800/50',
-    'Approved': 'bg-emerald-900/30 text-emerald-500 border-emerald-800/50',
-    'Implemented': 'bg-blue-900/30 text-blue-500 border-blue-800/50',
-    'Dropped': 'bg-red-900/30 text-red-500 border-red-800/50'
+    'Draft': 'bg-slate-200 text-slate-700 border-slate-300',
+    'Pending': 'bg-orange-100 text-orange-700 border-orange-200',
+    'Approved': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    'Implemented': 'bg-blue-100 text-blue-700 border-blue-200',
+    'Dropped': 'bg-red-100 text-red-700 border-red-200'
   };
   return (
-    <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap", colors[status] || colors['Draft'])}>
+    <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shadow-sm", colors[status] || colors['Draft'])}>
       {status}
     </span>
   );
@@ -72,18 +72,18 @@ export const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { re
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-white transition-colors"
+        className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-ims-primary transition-colors"
       >
         <StatusBadge status={currentStatus} />
         <ChevronDown size={12} />
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-40 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-20 overflow-hidden">
+        <div className="absolute right-0 mt-1 w-40 bg-white border border-ims-primary/20 rounded-lg shadow-xl z-20 overflow-hidden">
           {statuses.map(s => (
             <button
               key={s}
               onClick={() => handleUpdate(s)}
-              className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+              className="w-full text-left px-4 py-2 text-[10px] font-bold text-slate-700 hover:bg-ims-primary/10 hover:text-ims-primary transition-colors"
             >
               {s}
             </button>
@@ -108,7 +108,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
     setIsLoading(true);
     try {
       const [statsRes, historyRes, reportsRes] = await Promise.all([
-        fetch('/api/dashboard-stats').catch(() => null),
+        fetch('/api/dashboard/analytics').catch(() => null),
         fetch('/api/report-history').catch(() => null),
         fetch('/api/roi-reports').catch(() => null)
       ]);
@@ -167,40 +167,23 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
     return matchesSearch && matchesStatus;
   });
 
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#71717a'];
+  const COLORS = ['#006D77', '#83C5BE', '#FFDDD2', '#E29578', '#002124', '#00a896'];
 
   const investmentVsSaving = React.useMemo(() => {
-    return reports.map(r => ({
-      name: r.machine_name || 'Unnamed Project',
-      investment: r.investment_cost || 0,
-      savings: r.annual_savings || 0
-    }));
-  }, [reports]);
+    return stats?.investmentVsSaving || [];
+  }, [stats]);
 
   const statusDistribution = React.useMemo(() => {
-    const data: Record<string, number> = {};
-    reports.forEach(r => {
-      const status = r.status || 'Unknown';
-      data[status] = (data[status] || 0) + 1;
-    });
-    return Object.entries(data).map(([name, value]) => ({ name, value }));
-  }, [reports]);
+    return stats?.statusDistribution || [];
+  }, [stats]);
 
   const vendorInvestment = React.useMemo(() => {
-    const data: Record<string, number> = {};
-    reports.forEach(r => {
-      const vendor = r.vendor || 'Unknown';
-      data[vendor] = (data[vendor] || 0) + (r.investment_cost || 0);
-    });
-    return Object.entries(data).map(([name, value]) => ({ name, value }));
-  }, [reports]);
+    return stats?.vendorInvestment || [];
+  }, [stats]);
 
   const roiDistribution = React.useMemo(() => {
-    return reports.map(r => ({
-      name: r.machine_name || 'Unnamed Project',
-      roi: r.roi_months || r.payback_period || 0
-    }));
-  }, [reports]);
+    return stats?.roiDistribution || [];
+  }, [stats]);
 
   const handleExportPDF = async (report: any) => {
     try {
@@ -217,60 +200,60 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-full">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ims-primary"></div>
     </div>
   );
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: t.totalApprovedInvestment || 'Total Approved Investment', value: `$${(stats?.topStats?.totalInvestment || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, icon: DollarSign, color: 'emerald' },
-          { label: t.globalFobImpact || 'Global FOB Impact', value: `-$${(stats?.topStats?.totalFOBSavings || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}`, icon: TrendingUp, color: 'emerald' },
-          { label: t.averageRoi || 'Average ROI', value: `${(stats?.topStats?.avgROI || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${t.months || 'Months'}`, icon: Clock, color: 'amber' },
-          { label: t.activeProjects || 'Active Projects', value: stats?.topStats?.activeProjects || 0, icon: Activity, color: 'blue' },
+          { label: t.totalApprovedInvestment || 'Total Approved Investment', value: `$${(stats?.topStats?.totalInvestment || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, icon: DollarSign },
+          { label: t.globalFobImpact || 'Global FOB Impact', value: `-$${(stats?.topStats?.totalFOBSavings || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}`, icon: TrendingUp },
+          { label: t.averageRoi || 'Average ROI', value: `${(stats?.topStats?.avgROI || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${t.months || 'Months'}`, icon: Clock },
+          { label: t.activeProjects || 'Active Projects', value: stats?.topStats?.activeProjects || 0, icon: Activity },
         ].map((stat, i) => (
-          <div key={i} className="bg-zinc-900/40 backdrop-blur-sm border border-zinc-800 p-6 rounded-2xl shadow-lg">
+          <div key={i} className="glass-card p-6 flex flex-col justify-center rounded-[20px]">
             <div className="flex justify-between items-start mb-4">
-              <div className={`p-2 bg-${stat.color}-500/10 rounded-lg`}>
-                <stat.icon className={`text-${stat.color}-500`} size={20} />
+              <div className={`p-3 bg-ims-primary/10 rounded-2xl`}>
+                <stat.icon className={`text-ims-primary`} size={24} strokeWidth={1.5} />
               </div>
             </div>
-            <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
-            <p className="text-2xl font-mono font-bold text-white">{stat.value}</p>
+            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">{stat.label}</h3>
+            <p className="text-3xl font-sans font-black tracking-tight text-[#002D32]">{stat.value}</p>
           </div>
         ))}
       </div>
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Chart 1: Investment vs Saving */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
-          <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-            <BarChart3 size={16} className="text-emerald-500" />
+        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+          <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
+            <BarChart3 size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.investmentVsSavings || 'Investment vs Savings'}
           </h3>
           <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
             <BarChart data={investmentVsSaving}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.3} />
+              <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
               <RechartsTooltip 
-                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               />
-              <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#f59e0b" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#006D77" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#83C5BE" fillOpacity={0.9} radius={[10, 10, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Chart 2: Project Status Distribution */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
-          <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-            <PieChartIcon size={16} className="text-blue-500" />
+        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+          <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
+            <PieChartIcon size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.projectStatus || 'Project Status'}
           </h3>
           <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
@@ -278,16 +261,16 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
               <Pie data={statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label isAnimationActive={false}>
                 {statusDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
-              <RechartsTooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
+              <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px' }} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         {/* Chart 3: Investment by Vendor */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
-          <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-            <PieChartIcon size={16} className="text-violet-500" />
+        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+          <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
+            <PieChartIcon size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.investmentByVendor || 'Investment by Vendor'}
           </h3>
           <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
@@ -295,55 +278,55 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
               <Pie data={vendorInvestment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} label isAnimationActive={false}>
                 {vendorInvestment.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
-              <RechartsTooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }} />
+              <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px' }} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         {/* Chart 4: ROI Distribution */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-[350px]">
-          <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-            <BarChart3 size={16} className="text-amber-500" />
+        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+          <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
+            <BarChart3 size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.roiDistribution || 'ROI Distribution (Months)'}
           </h3>
           <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
             <BarChart data={roiDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.3} />
+              <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
               <RechartsTooltip 
-                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               />
-              <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#002124" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Projects Table */}
-      <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-            <FilePlus size={16} className="text-zinc-400" />
+      <div className="glass-card rounded-[20px] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-ims-primary/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h3 className="text-sm font-bold text-[#002D32] uppercase tracking-widest flex items-center gap-2">
+            <FilePlus size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.capexProjects || 'CAPEX Projects'}
           </h3>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input 
                 type="text" 
                 placeholder={t.searchProjects || "Search projects..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-white/50 border border-ims-primary/20 rounded-xl pl-9 pr-4 py-2 text-xs text-[#002D32] focus:outline-none focus:border-ims-primary focus:ring-2 focus:ring-ims-primary/30 transition-all font-mono"
               />
             </div>
             <select 
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-zinc-300 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="bg-white/50 border border-ims-primary/20 rounded-xl px-4 py-2 text-xs text-[#002D32] focus:outline-none focus:border-ims-primary focus:ring-2 focus:ring-ims-primary/30 transition-all font-mono"
             >
               <option value="All">{t.allStatus || 'All Status'}</option>
               <option value="Draft">{t.draft || 'Draft'}</option>
@@ -358,64 +341,64 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-zinc-950/50">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.projectIdMachine || 'Project ID / Machine'}</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.status || 'Status'}</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.investment || 'Investment'}</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.fobImpact || 'FOB Impact'}</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800">{t.roi || 'ROI'}</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800 text-right">{t.actions || 'Actions'}</th>
+              <tr className="bg-ims-primary/5">
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-ims-primary/10">{t.projectIdMachine || 'Project ID / Machine'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-ims-primary/10">{t.status || 'Status'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-ims-primary/10">{t.investment || 'Investment'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-ims-primary/10">{t.fobImpact || 'FOB Impact'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-ims-primary/10">{t.roi || 'ROI'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-[#4A6B6F] border-b border-ims-primary/10 text-right">{t.actions || 'Actions'}</th>
               </tr>
             </thead>
             <tbody>
               {filteredReports.map((r) => (
-                <tr key={r.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors group">
+                <tr key={r.id} className="border-b border-ims-primary/5 hover:bg-ims-primary/5 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-sm text-zinc-200">{r.machine_name || 'Unnamed Project'}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1 font-mono">{r.project_id || `REQ-${r.id}`} • {r.shoe_model}</div>
+                    <div className="font-bold text-sm text-[#002D32]">{r.machine_name || 'Unnamed Project'}</div>
+                    <div className="text-[10px] text-slate-500 mt-1 font-mono">{r.project_id || `REQ-${r.id}`} • {r.shoe_model}</div>
                   </td>
                   <td className="px-6 py-4">
                     <StatusChangeDropdown reportId={r.id} currentStatus={r.status || 'Draft'} onUpdate={fetchDashboardData} />
                   </td>
-                  <td className="px-6 py-4 font-mono text-sm text-zinc-300">
+                  <td className="px-6 py-4 font-mono text-sm text-[#002D32]">
                     ${(r.investment_cost || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-mono text-sm text-emerald-500 font-bold">
+                    <span className="font-mono text-sm text-ims-primary font-bold">
                       -${(r.fob_impact || 0).toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-mono text-sm text-amber-500">
+                  <td className="px-6 py-4 font-mono text-sm text-ims-primary">
                     {(r.roi_months || r.payback_period || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} mo
                   </td>
                   <td className="px-6 py-4 text-right relative">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                       <button 
                         onClick={() => setSelectedReport(r)}
-                        className="p-2 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all"
+                        className="p-2 text-slate-400 hover:text-ims-primary hover:bg-ims-primary/10 rounded-lg transition-all"
                         title="View Report"
                       >
                         <Eye size={16} />
                       </button>
                       <button 
                         onClick={() => onEditReport(r)}
-                        className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                        className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
                         title="Edit Report"
                       >
                         <Edit2 size={16} />
                       </button>
                       {deleteConfirm === r.id ? (
                         <div className="flex items-center justify-end gap-2">
-                          <span className="text-[10px] text-red-400 font-bold uppercase">Sure?</span>
-                          <button onClick={() => handleDelete(r.id)} className="p-1.5 bg-red-500/20 text-red-500 rounded hover:bg-red-500 hover:text-white transition-colors">
+                          <span className="text-[10px] text-red-500 font-bold uppercase">Sure?</span>
+                          <button onClick={() => handleDelete(r.id)} className="p-1.5 bg-red-500/10 text-red-600 rounded hover:bg-red-500 hover:text-white transition-colors">
                             <CheckCircle2 size={14} />
                           </button>
-                          <button onClick={() => setDeleteConfirm(null)} className="p-1.5 bg-zinc-800 text-zinc-400 rounded hover:text-white transition-colors">
+                          <button onClick={() => setDeleteConfirm(null)} className="p-1.5 bg-slate-200 text-slate-600 rounded hover:text-slate-700 transition-colors">
                             <X size={14} />
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                        <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
                           <Trash2 size={16} />
                         </button>
                       )}
@@ -425,7 +408,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
               ))}
               {filteredReports.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 text-sm font-bold uppercase tracking-widest">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-sm font-bold uppercase tracking-widest">
                     {t.noProjectsFound || 'No projects found'}
                   </td>
                 </tr>

@@ -222,7 +222,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0a0a]">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#F4F9F9] via-[#EDF6F9] to-[#83C5BE]/30 text-[#002D32] transition-colors duration-500">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -242,6 +242,7 @@ export default function App() {
           activeTab={activeTab} 
           t={t} 
           viewMode={viewMode}
+          setViewMode={setViewMode}
           advancedResults={advancedResults} 
           isEvaluating={isEvaluating} 
           isSaving={isSaving} 
@@ -259,22 +260,22 @@ export default function App() {
 
         <div className="p-8">
           {infographicData && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/20 backdrop-blur-[16px] p-4">
+              <div className="bg-white/80 rounded-[32px] p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-[0_32px_120px_rgba(0,109,119,0.15)] border border-white/60">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-white">AI Infographic Preview</h2>
+                  <h2 className="text-xl font-bold text-ims-primary tracking-tight">AI Infographic Preview</h2>
                   <button 
                     onClick={() => setInfographicData(null)}
-                    className="text-zinc-500 hover:text-white transition-colors"
+                    className="text-[#4A6B6F] hover:text-ims-primary hover:bg-ims-primary/10 p-2 rounded-full transition-colors"
                   >
                     <span className="sr-only">Close</span>
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
 
-                <div className="flex justify-center mb-8 overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+                <div className="flex justify-center mb-8 overflow-hidden rounded-[24px] border border-white/60 bg-white/80 shadow-inner">
                   <div className="scale-[0.6] sm:scale-[0.7] md:scale-[0.8] lg:scale-[1.0] origin-center py-12">
                     <Infographic 
                       data={infographicData} 
@@ -287,13 +288,13 @@ export default function App() {
                 <div className="flex gap-4 justify-end">
                   <button
                     onClick={() => setInfographicData(null)}
-                    className="px-6 py-3 rounded-xl border border-zinc-700 text-zinc-300 font-bold hover:bg-zinc-800 transition-all"
+                    className="px-6 py-3 rounded-xl border border-ims-primary/20 text-[#4A6B6F] font-bold hover:bg-[#83C5BE]/20 hover:text-[#006D77] transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDownloadInfographic}
-                    className="px-8 py-3 rounded-xl bg-emerald-500 text-black font-black hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2"
+                    className="px-8 py-3 rounded-xl bg-ims-primary text-white font-black hover:bg-[#005259] transition-all shadow-[0_8px_20px_rgba(0,109,119,0.25)] flex items-center gap-2 transform hover:-translate-y-1"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -328,23 +329,6 @@ export default function App() {
           {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} />}
           {activeTab === 'roi' && (
             <div className="max-w-5xl mx-auto">
-              <div className="flex justify-center mb-8">
-                <div className="bg-zinc-900/50 p-1 rounded-lg border border-zinc-800 inline-flex">
-                  <button 
-                    onClick={() => setViewMode('form')}
-                    className={cn("px-6 py-2 text-sm font-bold uppercase tracking-widest rounded-md transition-all", viewMode === 'form' ? "bg-emerald-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300")}
-                  >
-                    Form Input
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('preview')}
-                    className={cn("px-6 py-2 text-sm font-bold uppercase tracking-widest rounded-md transition-all", viewMode === 'preview' ? "bg-blue-600 text-white shadow-lg" : "text-zinc-500 hover:text-zinc-300")}
-                  >
-                    Report Preview
-                  </button>
-                </div>
-              </div>
-
               {viewMode === 'form' ? (
                 <ROICalculatorForm 
                   t={t} 
@@ -363,13 +347,13 @@ export default function App() {
                   <AIEvaluation aiEvaluation={aiEvaluation} />
 
                   {advancedResults ? (
-                    <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 shadow-2xl flex flex-col items-center">
-                      <div className="w-full flex items-center justify-between mb-6 border-b border-zinc-800 pb-4">
+                    <div className="bg-white/80 p-8 rounded-[24px] border border-white/60 shadow-[0_8px_32px_rgba(0,109,119,0.1)] flex flex-col items-center backdrop-blur-[16px]">
+                      <div className="w-full flex items-center justify-between mb-6 border-b border-ims-primary/10 pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                          <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Live Report Preview</h3>
+                          <div className="w-2 h-2 rounded-full bg-ims-primary animate-pulse" />
+                          <h3 className="text-sm font-bold uppercase tracking-widest text-[#4A6B6F]">Live Report Preview</h3>
                         </div>
-                        <span className="text-[10px] text-zinc-500 font-mono">A4 STANDARD FORMAT</span>
+                        <span className="text-[10px] text-ims-primary/70 font-mono">A4 STANDARD FORMAT</span>
                       </div>
                       
                       <div className="bg-white rounded shadow-2xl overflow-hidden transform transition-transform hover:scale-[1.01] duration-500">
@@ -384,8 +368,8 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-20 bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-800">
-                      <p className="text-zinc-500 italic">Please complete the form to see the report preview.</p>
+                    <div className="text-center py-20 bg-white/60 rounded-[24px] border border-dashed border-[#006D77]/20 backdrop-blur-[12px]">
+                      <p className="text-[#4A6B6F] font-bold">Please complete the form to see the report preview.</p>
                     </div>
                   )}
                 </div>
