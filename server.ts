@@ -445,79 +445,107 @@ async function startServer() {
 
   app.get("/api/dashboard/analytics", async (req, res) => {
     try {
-      if (supabase) {
-        const { data: reports, error } = await supabase.from('roi_reports').select('*');
-        if (error) throw error;
+      // Check Supabase config on Production
+      const hasSupabaseEnv = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY;
+      
+      const defaultResponse = {
+        topStats: {
+          totalInvestment: 0,
+          avgROI: 0,
+          totalFOBSavings: 0,
+          activeProjects: 0
+        },
+        statusDistribution: [],
+        investmentVsSaving: [],
+        vendorInvestment: [],
+        roiDistribution: []
+      };
 
-        let totalInvestment = 0;
-        let avgROI = 0;
-        let avgFobImpact = 0;
-        let activeCount = 0;
-        let roiSum = 0;
-        let roiCount = 0;
-        let fobSum = 0;
-        let fobCount = 0;
-
-        const distribution: Record<string, number> = {};
-        const vendors: Record<string, number> = {};
-        const investmentVsSaving: any[] = [];
-        const roiDistribution: any[] = [];
-
-        for (const report of reports || []) {
-          // Status distribution
-          const status = report.status || 'Draft';
-          distribution[status] = (distribution[status] || 0) + 1;
-
-          // Vendor investment
-          const vendor = report.vendor || 'Unknown';
-          vendors[vendor] = (vendors[vendor] || 0) + (Number(report.investment_cost) || 0);
-
-          // Check if active or approved
-          if (status !== 'Rejected') { // Or define active logic
-            activeCount++;
+      if (supabase && hasSupabaseEnv) {
+        try {
+          const { data: reports, error } = await supabase.from('roi_reports').select('*');
+          
+          if (error) {
+            console.error("Supabase dashboard analytics error:", error);
+            return res.json(defaultResponse); // Graceful fallback
           }
 
-          if (status === 'Approved' || status === 'Active' || status === 'Pending') {
-            totalInvestment += Number(report.investment_cost) || 0;
+          let totalInvestment = 0;
+          let avgROI = 0;
+          let avgFobImpact = 0;
+          let activeCount = 0;
+          let roiSum = 0;
+          let roiCount = 0;
+          let fobSum = 0;
+          let fobCount = 0;
+
+          const distribution: Record<string, number> = {};
+          const vendors: Record<string, number> = {};
+          const investmentVsSaving: any[] = [];
+          const roiDistribution: any[] = [];
+          
+          // Safe array processing
+          const safeReports = Array.isArray(reports) ? reports : [];
+
+          for (const report of safeReports) {
+            // Status distribution
+            const status = report.status || 'Draft';
+            distribution[status] = (distribution[status] || 0) + 1;
+
+            // Vendor investment
+            const vendor = report.vendor || 'Unknown';
+            vendors[vendor] = (vendors[vendor] || 0) + (Number(report.investment_cost) || 0);
+
+            // Check if active or approved
+            if (status !== 'Rejected') {
+              activeCount++;
+            }
+
+            if (status === 'Approved' || status === 'Active' || status === 'Pending') {
+              totalInvestment += Number(report.investment_cost) || 0;
+            }
+
+            if (report.roi_months) {
+              roiSum += Number(report.roi_months);
+              roiCount++;
+            }
+            if (report.fob_impact) {
+              // Negative fob_impact generally means savings
+              fobSum += Number(report.fob_impact);
+              fobCount++;
+            }
+
+            investmentVsSaving.push({
+              name: report.machine_name || 'Unnamed Project',
+              investment: Number(report.investment_cost) || 0,
+              savings: Number(report.annual_savings) || 0
+            });
+
+            roiDistribution.push({
+              name: report.machine_name || 'Unnamed Project',
+              roi: Number(report.roi_months) || 0
+            });
           }
 
-          if (report.roi_months) {
-            roiSum += Number(report.roi_months);
-            roiCount++;
-          }
-          if (report.fob_impact) {
-            // Negative fob_impact generally means savings
-            fobSum += Number(report.fob_impact);
-            fobCount++;
-          }
+          if (roiCount > 0) avgROI = roiSum / roiCount;
+          if (fobCount > 0) avgFobImpact = fobSum / fobCount;
 
-          investmentVsSaving.push({
-            name: report.machine_name || 'Unnamed Project',
-            investment: Number(report.investment_cost) || 0,
-            savings: Number(report.annual_savings) || 0
+          return res.json({
+            topStats: {
+              totalInvestment,
+              avgROI,
+              totalFOBSavings: avgFobImpact,
+              activeProjects: activeCount
+            },
+            statusDistribution: Object.entries(distribution).map(([name, value]) => ({ name, value })),
+            investmentVsSaving,
+            vendorInvestment: Object.entries(vendors).map(([name, value]) => ({ name, value })),
+            roiDistribution
           });
-
-          roiDistribution.push({
-            name: report.machine_name || 'Unnamed Project',
-            roi: Number(report.roi_months) || 0
-          });
+        } catch (innerErr) {
+          console.error("Dashboard calculation error:", innerErr);
+          return res.json(defaultResponse); // Fallback on processing error
         }
-
-        if (roiCount > 0) avgROI = roiSum / roiCount;
-        if (fobCount > 0) avgFobImpact = fobSum / fobCount;
-
-        return res.json({
-          topStats: {
-            totalInvestment,
-            avgROI,
-            totalFOBSavings: avgFobImpact,
-            activeProjects: activeCount
-          },
-          statusDistribution: Object.entries(distribution).map(([name, value]) => ({ name, value })),
-          investmentVsSaving,
-          vendorInvestment: Object.entries(vendors).map(([name, value]) => ({ name, value })),
-          roiDistribution
-        });
       }
 
       // Fallback API if no Supabase (matching old SQLite structure just in case)
@@ -544,7 +572,15 @@ async function startServer() {
         roiDistribution: roiDistQuery || []
       });
     } catch (err) {
-      res.status(500).json({ error: "Failed to fetch analytics dashboard stats" });
+      // 500 should be avoided if possible, return safe response
+      console.error("Dashboard API Error:", err);
+      res.json({
+        topStats: { totalInvestment: 0, avgROI: 0, totalFOBSavings: 0, activeProjects: 0 },
+        statusDistribution: [],
+        investmentVsSaving: [],
+        vendorInvestment: [],
+        roiDistribution: []
+      });
     }
   });
 

@@ -230,78 +230,102 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Chart 1: Investment vs Saving */}
-        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+        <div className="glass-card p-6 flex flex-col rounded-[20px] min-h-[350px]">
           <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
             <BarChart3 size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.investmentVsSavings || 'Investment vs Savings'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
-            <BarChart data={investmentVsSaving}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.3} />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
-              <RechartsTooltip 
-                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-              />
-              <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#006D77" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#83C5BE" fillOpacity={0.9} radius={[10, 10, 0, 0]} isAnimationActive={false} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="flex-1 w-full relative min-h-[300px]">
+            {!investmentVsSaving || investmentVsSaving.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-medium">No Data Available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
+                <BarChart data={investmentVsSaving}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.3} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                    formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  />
+                  <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#006D77" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#83C5BE" fillOpacity={0.9} radius={[10, 10, 0, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
         {/* Chart 2: Project Status Distribution */}
-        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+        <div className="glass-card p-6 flex flex-col rounded-[20px] min-h-[350px]">
           <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
             <PieChartIcon size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.projectStatus || 'Project Status'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
-            <PieChart>
-              <Pie data={statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label isAnimationActive={false}>
-                {statusDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px' }} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="flex-1 w-full relative min-h-[300px]">
+            {!statusDistribution || statusDistribution.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-medium">No Data Available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
+                <PieChart>
+                  <Pie data={statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label isAnimationActive={false}>
+                    {statusDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px' }} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
         {/* Chart 3: Investment by Vendor */}
-        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+        <div className="glass-card p-6 flex flex-col rounded-[20px] min-h-[350px]">
           <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
             <PieChartIcon size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.investmentByVendor || 'Investment by Vendor'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
-            <PieChart>
-              <Pie data={vendorInvestment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} label isAnimationActive={false}>
-                {vendorInvestment.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px' }} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="flex-1 w-full relative min-h-[300px]">
+            {!vendorInvestment || vendorInvestment.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-medium">No Data Available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
+                <PieChart>
+                  <Pie data={vendorInvestment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} label isAnimationActive={false}>
+                    {vendorInvestment.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px' }} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
         {/* Chart 4: ROI Distribution */}
-        <div className="glass-card p-6 rounded-[20px] h-[350px]">
+        <div className="glass-card p-6 flex flex-col rounded-[20px] min-h-[350px]">
           <h3 className="text-sm font-bold text-[#002D32] mb-6 uppercase tracking-widest flex items-center gap-2">
             <BarChart3 size={18} className="text-ims-primary" strokeWidth={1.5} />
             {t.roiDistribution || 'ROI Distribution (Months)'}
           </h3>
-          <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
-            <BarChart data={roiDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.3} />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-              <RechartsTooltip 
-                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-              />
-              <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#002124" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="flex-1 w-full relative min-h-[300px]">
+            {!roiDistribution || roiDistribution.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-medium">No Data Available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} aspect={2}>
+                <BarChart data={roiDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.3} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                    formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  />
+                  <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#002124" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
       </div>
 
