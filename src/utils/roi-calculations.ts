@@ -10,7 +10,7 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
   const proposedMaterialCost = p.proposedMaterials?.reduce((sum, m) => sum + (m.usage * m.fob * (1 + m.loss / 100)), 0) || 0;
 
   // Manual Calculations (Current)
-  const manualAnnualCapacity = p.currentPPH * p.machineQuantity * HOURS_PER_YEAR;
+  const manualAnnualCapacity = p.currentPPH * p.currentManpower * HOURS_PER_YEAR;
   const manualActualGood = manualAnnualCapacity * (1 - p.currentDefectRate / 100);
   const manualAnnualLabor = p.currentManpower * p.machineQuantity * p.localLaborCost * 12;
   const manualAnnualEnergy = p.currentPowerConsumptionKW * p.machineQuantity * HOURS_PER_YEAR * POWER_RATE_USD; 
