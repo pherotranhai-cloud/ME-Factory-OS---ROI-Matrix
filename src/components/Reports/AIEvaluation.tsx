@@ -11,8 +11,8 @@ function cn(...inputs: ClassValue[]) {
 export const AIEvaluation = ({ aiEvaluation }: { aiEvaluation: any }) => {
   if (!aiEvaluation) return null;
 
-  const isPositive = aiEvaluation.verdict === "Strongly Recommend" || aiEvaluation.verdict === "Duyệt Gấp";
-  const isCaution = aiEvaluation.verdict === "Consider with Caution" || aiEvaluation.verdict === "Cân Nhắc Kỹ";
+  const isPositive = aiEvaluation.verdict === "Immediate Approval" || aiEvaluation.verdict === "Duyệt Gấp";
+  const isCaution = aiEvaluation.verdict === "Proceed with Caution" || aiEvaluation.verdict === "Cân Nhắc Kỹ";
 
   return (
     <motion.div 

@@ -14,7 +14,10 @@ import { createClient } from "@supabase/supabase-js";
 const isProd = process.env.NODE_ENV === "production" || process.env.DATABASE_URL;
 
 // Supabase Connection
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+let supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+if (supabaseUrl && !supabaseUrl.startsWith("http")) {
+  supabaseUrl = "https://" + supabaseUrl;
+}
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
@@ -80,8 +83,9 @@ async function startServer() {
       const { data: reports, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       res.json(reports);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch reports" });
+    } catch (err: any) {
+      console.error("Reports Fetch Error:", err.message || err);
+      res.json([]);
     }
   });
 
@@ -126,8 +130,9 @@ async function startServer() {
       const { data, error } = await queryBuilder;
       if (error) throw error;
       return res.json(data);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch ROI reports" });
+    } catch (err: any) {
+      console.error("ROI Reports Error:", err.message || err);
+      res.json([]);
     }
   });
 
@@ -271,9 +276,9 @@ async function startServer() {
       if (error) throw error;
 
       res.json(data);
-    } catch (err) {
-      console.error("History Error details:", err);
-      res.status(500).json({ error: "Failed to fetch history" });
+    } catch (err: any) {
+      console.error("History Error:", err.message || err);
+      res.json([]);
     }
   });
 
@@ -415,9 +420,38 @@ async function startServer() {
 
   app.post("/api/evaluate", async (req, res) => {
     try {
-      const { prompt } = req.body;
+      const { prompt, targetLanguage = "EN" } = req.body;
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: "OpenAI API Key not configured" });
+
+      const allowedVerdict = targetLanguage === "VI"
+        ? '["Duyệt Gấp", "Cân Nhắc Kỹ", "Bỏ Qua"]'
+        : '["Immediate Approval", "Proceed with Caution", "Reject / Drop"]';
+
+      const systemPromptTemplate = `You are a Senior Factory Operations & Industrial Investment Director in footwear and discrete manufacturing. Your goal is to critically evaluate Equipment ROI, Line Balancing, and Automation Proposals.
+
+### CORE AUDIT RULES:
+1. **Tone & Style:** Authoritative, direct, highly analytical, and business-focused. Zero fluff, no greetings, no informal slang.
+2. **Language Enforcement (STRICT):** You MUST render all text values inside the output JSON using the language specified in target_language: "{{TARGET_LANGUAGE}}". Do NOT mix languages.
+3. **Data Sanity & Critical Audit (Industrial Engineering Lens):**
+   - Headcount Reduction: Challenge fractional FTEs (e.g., 0.4 FTE implies shared operator; flag if impractical).
+   - Hidden Costs: Flag zero maintenance or missing consumable costs as high risk for machine breakdown/OEE degradation.
+   - Line Balancing: Verify if the drastic Cycle Time (CT) reduction solves an actual bottleneck or creates WIP buffer downstream.
+   - Financial Realism: Evaluate Payback Period against machinery lifespan and operational volatility.
+
+### OUTPUT JSON SCHEMA:
+Return ONLY a valid JSON object matching this strict structure:
+{
+  "summary": "2-sentence executive summary focusing on financial impact, manpower, and operational sanity.",
+  "verdict": "{{ALLOWED_VERDICT_ENUM}}",
+  "pros": ["3-4 concrete operational/financial advantages"],
+  "cons": ["2-3 critical data gaps, unrealistic assumptions, or financial drawbacks"],
+  "risks": ["3-4 operational risks regarding OEE, bottleneck shifting, maintenance, or actual manpower execution"]
+}`;
+
+      const systemPrompt = systemPromptTemplate
+        .replace("{{TARGET_LANGUAGE}}", targetLanguage)
+        .replace("{{ALLOWED_VERDICT_ENUM}}", allowedVerdict);
 
       const openai = new OpenAI({ apiKey });
       const response = await openai.chat.completions.create({
@@ -425,7 +459,7 @@ async function startServer() {
         messages: [
           { 
             role: "system", 
-            content: "You are a Senior Industrial Investment Consultant and Manufacturing Excellence Strategy Expert. You must evaluate the provided Industrial Engineering (IE) and financial data objectively, rigorously, and without emotion. Your tone must be strictly corporate, analytical, authoritative, and professional. Completely avoid informal vocabulary, tech slang, and colloquialisms. Use rigorous manufacturing terminology such as Headcount Optimization, Payback Period, Opex, Capex, Line Balancing, and Throughput Constraints. When analyzing mathematically unrealistic data (e.g., disproportionate ROI or headcount reduction compared to Capex), explicitly critique it as a data-driven anomaly requiring validation rather than labeling it as 'fake' or 'virtual'. You MUST respond with a JSON object containing the keys: 'summary', 'verdict', 'pros', 'cons', and 'risks'." 
+            content: systemPrompt 
           },
           { role: "user", content: prompt }
         ],

@@ -403,8 +403,8 @@ export const CAPEXReportTemplate: React.FC<PDFTemplateProps> = ({ params, result
                 <span className="text-xs font-black uppercase !text-zinc-400 tracking-widest">{t.verdict}:</span>
                 <span className={cn(
                   "px-4 py-1 text-xs font-black uppercase tracking-[0.2em] rounded",
-                  aiEvaluation.verdict === 'Strongly Recommend' || aiEvaluation.verdict === 'Duyệt Gấp' ? "bg-emerald-600 text-white" : 
-                  aiEvaluation.verdict === 'Consider with Caution' || aiEvaluation.verdict === 'Cân Nhắc Kỹ' ? "bg-amber-500 text-black" : "bg-red-600 text-white"
+                  aiEvaluation.verdict === 'Immediate Approval' || aiEvaluation.verdict === 'Duyệt Gấp' ? "bg-emerald-600 text-white" : 
+                  aiEvaluation.verdict === 'Proceed with Caution' || aiEvaluation.verdict === 'Cân Nhắc Kỹ' ? "bg-amber-500 text-black" : "bg-red-600 text-white"
                 )}>
                   {getTranslatedVerdict(aiEvaluation.verdict)}
                 </span>

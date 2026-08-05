@@ -827,33 +827,51 @@ export const TRANSLATIONS: Record<Language, any> = {
 
 export const VERDICT_TRANSLATIONS: Record<Language, Record<string, string>> = {
   EN: {
-    "Strongly Recommend": "Strongly Recommend",
-    "Consider with Caution": "Consider with Caution",
-    "Not Recommended": "Not Recommended"
+    "Immediate Approval": "Immediate Approval",
+    "Proceed with Caution": "Proceed with Caution",
+    "Reject / Drop": "Reject / Drop",
+    "Duyệt Gấp": "Immediate Approval",
+    "Cân Nhắc Kỹ": "Proceed with Caution",
+    "Bỏ Qua": "Reject / Drop"
   },
   VI: {
-    "Strongly Recommend": "Đề xuất mạnh mẽ",
-    "Consider with Caution": "Cân nhắc cẩn thận",
-    "Not Recommended": "Không đề xuất"
+    "Immediate Approval": "Duyệt Gấp",
+    "Proceed with Caution": "Cân Nhắc Kỹ",
+    "Reject / Drop": "Bỏ Qua",
+    "Duyệt Gấp": "Duyệt Gấp",
+    "Cân Nhắc Kỹ": "Cân Nhắc Kỹ",
+    "Bỏ Qua": "Bỏ Qua"
   },
   'ZH-CN': {
-    "Strongly Recommend": "强烈推荐",
-    "Consider with Caution": "谨慎考虑",
-    "Not Recommended": "不推荐"
+    "Immediate Approval": "立即批准",
+    "Proceed with Caution": "谨慎进行",
+    "Reject / Drop": "拒绝 / 放弃",
+    "Duyệt Gấp": "立即批准",
+    "Cân Nhắc Kỹ": "谨慎进行",
+    "Bỏ Qua": "拒绝 / 放弃"
   },
   'ZH-TW': {
-    "Strongly Recommend": "強烈推薦",
-    "Consider with Caution": "謹慎考慮",
-    "Not Recommended": "不推薦"
+    "Immediate Approval": "立即批准",
+    "Proceed with Caution": "謹慎進行",
+    "Reject / Drop": "拒絕 / 放棄",
+    "Duyệt Gấp": "立即批准",
+    "Cân Nhắc Kỹ": "謹慎進行",
+    "Bỏ Qua": "拒絕 / 放棄"
   },
   ID: {
-    "Strongly Recommend": "Sangat Direkomendasikan",
-    "Consider with Caution": "Pertimbangkan dengan Hati-hati",
-    "Not Recommended": "Tidak Direkomendasikan"
+    "Immediate Approval": "Persetujuan Segera",
+    "Proceed with Caution": "Lanjutkan dengan Hati-hati",
+    "Reject / Drop": "Tolak / Jatuhkan",
+    "Duyệt Gấp": "Persetujuan Segera",
+    "Cân Nhắc Kỹ": "Lanjutkan dengan Hati-hati",
+    "Bỏ Qua": "Tolak / Jatuhkan"
   },
   MY: {
-    "Strongly Recommend": "Sangat Disyorkan",
-    "Consider with Caution": "Pertimbangkan dengan Berhati-hati",
-    "Not Recommended": "Tidak Disyorkan"
+    "Immediate Approval": "Kelulusan Segera",
+    "Proceed with Caution": "Teruskan dengan Berhati-hati",
+    "Reject / Drop": "Tolak / Gugurkan",
+    "Duyệt Gấp": "Kelulusan Segera",
+    "Cân Nhắc Kỹ": "Teruskan dengan Berhati-hati",
+    "Bỏ Qua": "Tolak / Gugurkan"
   }
 };
