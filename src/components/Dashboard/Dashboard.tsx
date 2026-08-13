@@ -33,6 +33,9 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** A single slice/bar in the dashboard charts, as returned by /api/dashboard/analytics. */
+type ChartSlice = { name: string; value: number };
+
 export const StatusBadge = ({ status }: { status: string }) => {
   const colors: any = {
     'Draft': 'bg-slate-200 text-slate-700 border-slate-300',
@@ -175,11 +178,11 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
     return stats?.investmentVsSaving || [];
   }, [stats]);
 
-  const statusDistribution = React.useMemo(() => {
+  const statusDistribution = React.useMemo<ChartSlice[]>(() => {
     return stats?.statusDistribution || [];
   }, [stats]);
 
-  const vendorInvestment = React.useMemo(() => {
+  const vendorInvestment = React.useMemo<ChartSlice[]>(() => {
     return stats?.vendorInvestment || [];
   }, [stats]);
 
@@ -248,7 +251,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                   <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    formatter={(value) => Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   />
                   <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#006D77" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
                   <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#83C5BE" fillOpacity={0.9} radius={[10, 10, 0, 0]} isAnimationActive={false} />
@@ -321,7 +324,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                   <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    formatter={(value) => Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   />
                   <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#002124" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
                 </BarChart>

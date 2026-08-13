@@ -327,63 +327,96 @@ export const CAPEXReportTemplate: React.FC<PDFTemplateProps> = ({ params, result
             <tbody>
               <tr>
                 <td className="border border-zinc-300 p-2 font-medium !text-black">{t.annualLaborCost || 'Annual Labor Cost'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.manual.annualLaborCost)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.machine.annualLaborCost)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.current.annualLaborCost)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.proposed.annualLaborCost)}</td>
               </tr>
               <tr>
                 <td className="border border-zinc-300 p-2 font-medium !text-black">{t.annualMaintenance || 'Annual Maintenance'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(params.currentMaintenanceCostPerYear)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(params.proposedMaintenanceCostPerYear)}</td>
+                {/* From the engine, so these are scaled by machine quantity like every
+                    other line. Reading the raw params here understated both columns. */}
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.current.annualMaintenance)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.proposed.annualMaintenance)}</td>
               </tr>
               <tr>
                 <td className="border border-zinc-300 p-2 font-medium !text-black">{t.annualConsumables || 'Annual Consumables'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(params.currentConsumablesCostPerYear)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(params.proposedConsumablesCostPerYear)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.current.annualConsumables)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.proposed.annualConsumables)}</td>
               </tr>
               <tr>
                 <td className="border border-zinc-300 p-2 font-medium !text-black">{t.annualDepreciation || 'Annual Depreciation'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.manual.annualDepreciation)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.machine.annualDepreciation)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.current.annualDepreciation)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">{fmtCurrency(results.proposed.annualDepreciation)}</td>
               </tr>
               <tr style={{ backgroundColor: '#1e293b', color: '#ffffff' }}>
                 <td colSpan={3} className="border border-zinc-300 p-1 text-[9px] font-black uppercase tracking-widest">{t.perPairCosts || 'Per Pair Costs'}</td>
               </tr>
               <tr>
                 <td className="border border-zinc-300 p-2 font-medium !text-black">{t.materialCostPerPair || 'Material Cost per Pair'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.manual.materialCostPerPair, 4)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.machine.materialCostPerPair, 4)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.current.materialCostPerPair, 4)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.proposed.materialCostPerPair, 4)}</td>
               </tr>
               <tr>
                 <td className="border border-zinc-300 p-2 font-medium !text-black">{t.operatingCostPerPair || 'Operating Cost per Pair'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.manual.operatingCostPerPair, 4)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.machine.operatingCostPerPair, 4)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.current.operatingCostPerPair, 4)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-black">${sf(results.proposed.operatingCostPerPair, 4)}</td>
               </tr>
               <tr className="!bg-zinc-50 font-bold">
                 <td className="border border-zinc-300 p-2 !text-zinc-800">{t.totalAnnualCost || 'Total Annual Cost'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-zinc-800">${fmtCurrency(results.manual.totalAnnualCost)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-zinc-800">${fmtCurrency(results.machine.totalAnnualCost)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-zinc-800">${fmtCurrency(results.current.totalAnnualCost)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-zinc-800">${fmtCurrency(results.proposed.totalAnnualCost)}</td>
               </tr>
               <tr className="!bg-zinc-100 font-bold">
                 <td className="border border-zinc-300 p-2 !text-zinc-800">{t.costPerPair || 'Total Cost per Pair (FOB)'} (USD)</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-zinc-800">${sf(results.manual.costPerPair, 4)}</td>
-                <td className="border border-zinc-300 p-2 text-right font-mono !text-emerald-600">${sf(results.machine.costPerPair, 4)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-zinc-800">${sf(results.current.costPerPair, 4)}</td>
+                <td className="border border-zinc-300 p-2 text-right font-mono !text-emerald-600">${sf(results.proposed.costPerPair, 4)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 mt-auto mb-8">
-          <div className="border-2 border-emerald-600 rounded-xl p-6 bg-emerald-50/50 flex flex-col items-center justify-center shadow-sm">
-            <span className="text-[10px] font-black uppercase text-emerald-700 mb-2 tracking-[0.2em]">{t.roi}</span>
-            <div className="text-4xl font-mono font-black text-emerald-800 tracking-tighter">
-              {sf(results.roiMonths, 1)}
-              <span className="text-sm ml-1 uppercase">{t.months}</span>
+        <div className="grid grid-cols-3 gap-4 mt-auto mb-8">
+          <div className={cn(
+            "border-2 rounded-xl p-5 flex flex-col items-center justify-center shadow-sm",
+            results.payback.kind === 'none' ? "border-red-600 bg-red-50/50" : "border-emerald-600 bg-emerald-50/50"
+          )}>
+            <span className={cn(
+              "text-[9px] font-black uppercase mb-2 tracking-[0.2em]",
+              results.payback.kind === 'none' ? "!text-red-700" : "!text-emerald-700"
+            )}>{t.roi}</span>
+            {/* A proposal that never pays back must say so, not render as 0 (P1-04). */}
+            {results.payback.kind === 'months' ? (
+              <div className="text-3xl font-mono font-black !text-emerald-800 tracking-tighter">
+                {sf(results.payback.months, 1)}
+                <span className="text-xs ml-1 uppercase">{t.months}</span>
+              </div>
+            ) : results.payback.kind === 'immediate' ? (
+              <div className="text-2xl font-mono font-black !text-emerald-800 tracking-tighter uppercase">
+                {t.immediate || 'Immediate'}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="text-xl font-mono font-black !text-red-700 tracking-tighter uppercase">
+                  {t.noPayback || 'No Payback'}
+                </div>
+                <div className="text-[9px] font-bold !text-red-600 mt-1">
+                  -{fmtCurrency(results.payback.annualLoss)}/{t.year || 'yr'}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="border-2 border-blue-600 rounded-xl p-5 bg-blue-50/50 flex flex-col items-center justify-center shadow-sm">
+            <span className="text-[9px] font-black uppercase !text-blue-700 mb-2 tracking-[0.2em]">{t.fobImpact || 'Cost per Pair Reduction'}</span>
+            <div className="text-3xl font-mono font-black !text-blue-800 tracking-tighter">
+              {results.savings.fobImpact >= 0 ? '-' : '+'}${sf(Math.abs(results.savings.fobImpact), 3)}
             </div>
           </div>
-          <div className="border-2 border-blue-600 rounded-xl p-6 bg-blue-50/50 flex flex-col items-center justify-center shadow-sm">
-            <span className="text-[10px] font-black uppercase text-blue-700 mb-2 tracking-[0.2em]">{t.fobImpact || 'Cost per Pair Reduction'}</span>
-            <div className="text-4xl font-mono font-black text-blue-800 tracking-tighter">
-              -${sf(results.savings.fobImpact, 3)}
+          <div className="border-2 border-zinc-400 rounded-xl p-5 bg-zinc-50 flex flex-col items-center justify-center shadow-sm">
+            <span className="text-[9px] font-black uppercase !text-zinc-600 mb-2 tracking-[0.2em]">{t.investment || 'Investment'}</span>
+            <div className="text-2xl font-mono font-black !text-zinc-800 tracking-tighter">
+              {fmtCurrency(results.investment.net)}
+            </div>
+            <div className="text-[9px] font-bold !text-zinc-500 mt-1">
+              {t.net || 'Net'} · {t.gross || 'Gross'} {fmtCurrency(results.investment.gross)}
             </div>
           </div>
         </div>

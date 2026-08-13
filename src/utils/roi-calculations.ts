@@ -1,109 +1,249 @@
-import { ROIParams, ROIResults } from '../types';
+import {
+  ROIParams,
+  ROIResults,
+  ScenarioResults,
+  SavingsComponent,
+  Payback,
+  MaterialItem,
+  DEFAULT_ASSUMPTIONS,
+} from '../types';
 
-export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
-  const DAYS_PER_YEAR = 312;
-  const HOURS_PER_YEAR = p.workingHoursPerDay * DAYS_PER_YEAR;
-  const POWER_RATE_USD = 0.075; // Approx $0.075 per kWh
+/** Coerce anything the form or a stored report may hand us into a usable number. */
+const num = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
-  // Calculate Material Costs
-  const currentMaterialCost = p.currentMaterials?.reduce((sum, m) => sum + (m.usage * m.fob * (1 + m.loss / 100)), 0) || 0;
-  const proposedMaterialCost = p.proposedMaterials?.reduce((sum, m) => sum + (m.usage * m.fob * (1 + m.loss / 100)), 0) || 0;
+/** Division that yields 0 rather than Infinity/NaN when the denominator is unusable. */
+const safeDiv = (a: number, b: number): number =>
+  b !== 0 && Number.isFinite(b) && Number.isFinite(a) ? a / b : 0;
 
-  // Manual Calculations (Current)
-  const manualAnnualCapacity = p.currentPPH * p.currentManpower * HOURS_PER_YEAR;
-  const manualActualGood = manualAnnualCapacity * (1 - p.currentDefectRate / 100);
-  const manualAnnualLabor = p.currentManpower * p.machineQuantity * p.localLaborCost * 12;
-  const manualAnnualEnergy = p.currentPowerConsumptionKW * p.machineQuantity * HOURS_PER_YEAR * POWER_RATE_USD; 
-  const manualAnnualMaintenance = p.currentMaintenanceCostPerYear * p.machineQuantity;
-  const manualAnnualConsumables = p.currentConsumablesCostPerYear * p.machineQuantity;
-  const manualAnnualDepreciation = p.currentDepreciationYears > 0 ? (p.currentUnitPrice * p.machineQuantity) / p.currentDepreciationYears : 0;
+/** Percentages arrive from free-text inputs; keep them inside [0, 100]. */
+const clampPct = (pct: unknown): number => Math.min(Math.max(num(pct), 0), 100);
 
-  // Total Annual Cost = Labor + Maintenance + Consumables + Energy + Depreciation
-  const manualTotalAnnualCost = manualAnnualLabor + manualAnnualEnergy + manualAnnualMaintenance + manualAnnualConsumables + manualAnnualDepreciation;
-  // Cost per Pair = Total Annual Cost / Total Annual Output
-  const manualOperatingCostPerPair = manualActualGood > 0 ? manualTotalAnnualCost / manualActualGood : 0;
-  const manualMaterialCostPerPair = currentMaterialCost;
-  const manualCostPerPair = manualOperatingCostPerPair + manualMaterialCostPerPair;
-  const manualAnnualMaterial = manualActualGood * currentMaterialCost;
+/**
+ * Assumptions that used to be hardcoded inside this file (P1-06). Reports saved
+ * before they existed on ROIParams deserialize without them, so fall back to the
+ * documented defaults rather than producing NaN.
+ */
+export const resolveAssumptions = (p: Partial<ROIParams>) => {
+  const daysPerYear = p.daysPerYear != null ? num(p.daysPerYear) : DEFAULT_ASSUMPTIONS.daysPerYear;
+  const powerRateUSD = p.powerRateUSD != null ? num(p.powerRateUSD) : DEFAULT_ASSUMPTIONS.powerRateUSD;
+  const workingHoursPerDay = num(p.workingHoursPerDay);
+  return {
+    daysPerYear,
+    powerRateUSD,
+    workingHoursPerDay,
+    hoursPerYear: workingHoursPerDay * daysPerYear,
+  };
+};
 
-  // Machine Calculations (Proposed)
-  const machineAnnualCapacity = p.proposedPPH * p.machineQuantity * HOURS_PER_YEAR;
-  const machineActualGood = machineAnnualCapacity * (1 - p.proposedDefectRate / 100);
-  const machineAnnualLabor = p.proposedManpower * p.machineQuantity * p.localLaborCost * 12;
-  const machineAnnualEnergy = p.proposedPowerConsumptionKW * p.machineQuantity * HOURS_PER_YEAR * POWER_RATE_USD;
-  const machineAnnualMaintenance = p.proposedMaintenanceCostPerYear * p.machineQuantity;
-  const machineAnnualConsumables = p.proposedConsumablesCostPerYear * p.machineQuantity;
-  const machineAnnualDepreciation = p.proposedDepreciationYears > 0 ? (p.proposedUnitPrice * p.machineQuantity) / p.proposedDepreciationYears : 0;
-  
-  // Total Annual Cost = Labor + Maintenance + Consumables + Energy + Depreciation
-  const machineTotalAnnualCost = machineAnnualLabor + machineAnnualEnergy + machineAnnualMaintenance + machineAnnualConsumables + machineAnnualDepreciation;
-  // Cost per Pair = Total Annual Cost / Total Annual Output
-  const machineOperatingCostPerPair = machineActualGood > 0 ? machineTotalAnnualCost / machineActualGood : 0;
-  const machineMaterialCostPerPair = proposedMaterialCost;
-  const machineCostPerPair = machineOperatingCostPerPair + machineMaterialCostPerPair;
-  const machineAnnualMaterial = machineActualGood * proposedMaterialCost;
+/** BOM cost for one pair PRODUCED (before scrap), summed over the material table. */
+export const bomCostPerPair = (materials: MaterialItem[] | undefined): number =>
+  (materials || []).reduce(
+    (sum, m) => sum + num(m.usage) * num(m.fob) * (1 + num(m.loss) / 100),
+    0,
+  );
 
-  // Savings for SAME OUTPUT (Target = Machine Capacity)
-  const manualWorkersNeededForMachineOutput = p.currentPPH > 0 ? (p.proposedPPH / p.currentPPH) * p.currentManpower * p.machineQuantity : 0;
-  const manpowerSaving = manualWorkersNeededForMachineOutput - (p.proposedManpower * p.machineQuantity);
-  const laborSaving = manpowerSaving * p.localLaborCost * 12;
+/** Inputs for one side of the comparison, already normalised. */
+interface ScenarioInputs {
+  pph: number;
+  manpower: number;
+  defectRate: number;
+  powerKW: number;
+  unitPrice: number;
+  maintenancePerYear: number;
+  consumablesPerYear: number;
+  depreciationYears: number;
+  materials: MaterialItem[] | undefined;
+}
 
-  // Material Saving (due to lower defective rate and material cost)
-  const manualMaterialForSameOutput = machineAnnualCapacity * currentMaterialCost * (1 + p.currentDefectRate / 100);
-  const machineMaterialForSameOutput = machineAnnualCapacity * proposedMaterialCost * (1 + p.proposedDefectRate / 100);
-  const materialSaving = manualMaterialForSameOutput - machineMaterialForSameOutput;
+/**
+ * Cost model for one scenario.
+ *
+ * Every term scales by `quantity`, on both the numerator and the denominator of
+ * cost-per-pair. That is what makes cost-per-pair invariant to machine quantity —
+ * the property the previous implementation violated (P1-01), where capacity was
+ * driven by `currentManpower` while labour was driven by `machineQuantity`.
+ */
+const computeScenario = (
+  s: ScenarioInputs,
+  quantity: number,
+  laborCostPerMonth: number,
+  hoursPerYear: number,
+  powerRateUSD: number,
+): ScenarioResults => {
+  const yieldRate = 1 - clampPct(s.defectRate) / 100;
 
-  const energySaving = manualAnnualEnergy - machineAnnualEnergy;
-  const maintenanceSaving = manualAnnualMaintenance - machineAnnualMaintenance;
-  const consumablesSaving = manualAnnualConsumables - machineAnnualConsumables;
-  
-  // FOB Impact is the improvement in operating cost per pair
-  const fobImpact = manualCostPerPair - machineCostPerPair;
-  const totalAnnualSaving = fobImpact * machineActualGood;
-  const netInvestment = (p.proposedUnitPrice - p.currentUnitPrice) * p.machineQuantity;
-  const roiMonths = totalAnnualSaving > 0 ? (netInvestment / (totalAnnualSaving / 12)) : Infinity;
+  const annualCapacity = s.pph * quantity * hoursPerYear;
+  const actualGoodCapacity = annualCapacity * yieldRate;
+
+  const annualLaborCost = s.manpower * quantity * laborCostPerMonth * 12;
+  const annualEnergyCost = s.powerKW * quantity * hoursPerYear * powerRateUSD;
+  const annualMaintenance = s.maintenancePerYear * quantity;
+  const annualConsumables = s.consumablesPerYear * quantity;
+  const annualDepreciation = safeDiv(s.unitPrice * quantity, s.depreciationYears);
+
+  // Material is consumed on every pair PRODUCED, so annual material follows gross
+  // capacity. Per GOOD pair it is grossed up by the yield — i.e. divided by
+  // (1 - defect), not multiplied by (1 + defect) as before (P1-05).
+  const perPairBOM = bomCostPerPair(s.materials);
+  const annualMaterialCost = annualCapacity * perPairBOM;
+
+  const totalOperatingCost =
+    annualLaborCost + annualEnergyCost + annualMaintenance + annualConsumables + annualDepreciation;
+  const totalAnnualCost = totalOperatingCost + annualMaterialCost;
+
+  const operatingCostPerPair = safeDiv(totalOperatingCost, actualGoodCapacity);
+  const materialCostPerPair = safeDiv(annualMaterialCost, actualGoodCapacity);
 
   return {
-    manual: {
-      annualCapacity: manualAnnualCapacity,
-      actualGoodCapacity: manualActualGood,
-      manpowerDemand: p.currentManpower * p.machineQuantity,
-      annualLaborCost: manualAnnualLabor,
-      annualMaterialCost: manualAnnualMaterial,
-      annualEnergyCost: manualAnnualEnergy,
-      annualMaintenance: manualAnnualMaintenance,
-      annualConsumables: manualAnnualConsumables,
-      annualDepreciation: manualAnnualDepreciation,
-      totalAnnualCost: manualTotalAnnualCost,
-      costPerPair: manualCostPerPair,
-      materialCostPerPair: manualMaterialCostPerPair,
-      operatingCostPerPair: manualOperatingCostPerPair
+    annualCapacity,
+    actualGoodCapacity,
+    manpowerDemand: s.manpower * quantity,
+    annualLaborCost,
+    annualMaterialCost,
+    annualEnergyCost,
+    annualMaintenance,
+    annualConsumables,
+    annualDepreciation,
+    totalOperatingCost,
+    totalAnnualCost,
+    operatingCostPerPair,
+    materialCostPerPair,
+    costPerPair: operatingCostPerPair + materialCostPerPair,
+  };
+};
+
+export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
+  const assumptions = resolveAssumptions(p);
+  const { hoursPerYear, powerRateUSD } = assumptions;
+
+  const quantity = num(p.machineQuantity);
+  const laborCostPerMonth = num(p.localLaborCost);
+
+  const current = computeScenario(
+    {
+      pph: num(p.currentPPH),
+      manpower: num(p.currentManpower),
+      defectRate: clampPct(p.currentDefectRate),
+      powerKW: num(p.currentPowerConsumptionKW),
+      unitPrice: num(p.currentUnitPrice),
+      maintenancePerYear: num(p.currentMaintenanceCostPerYear),
+      consumablesPerYear: num(p.currentConsumablesCostPerYear),
+      depreciationYears: num(p.currentDepreciationYears),
+      materials: p.currentMaterials,
     },
-    machine: {
-      annualCapacity: machineAnnualCapacity,
-      actualGoodCapacity: machineActualGood,
-      manpowerDemand: p.proposedManpower * p.machineQuantity,
-      annualLaborCost: machineAnnualLabor,
-      annualMaterialCost: machineAnnualMaterial,
-      annualEnergyCost: machineAnnualEnergy,
-      annualMaintenance: machineAnnualMaintenance,
-      annualConsumables: machineAnnualConsumables,
-      annualDepreciation: machineAnnualDepreciation,
-      totalAnnualCost: machineTotalAnnualCost,
-      costPerPair: machineCostPerPair,
-      materialCostPerPair: machineMaterialCostPerPair,
-      operatingCostPerPair: machineOperatingCostPerPair
+    quantity,
+    laborCostPerMonth,
+    hoursPerYear,
+    powerRateUSD,
+  );
+
+  const proposed = computeScenario(
+    {
+      pph: num(p.proposedPPH),
+      manpower: num(p.proposedManpower),
+      defectRate: clampPct(p.proposedDefectRate),
+      powerKW: num(p.proposedPowerConsumptionKW),
+      unitPrice: num(p.proposedUnitPrice),
+      maintenancePerYear: num(p.proposedMaintenanceCostPerYear),
+      consumablesPerYear: num(p.proposedConsumablesCostPerYear),
+      depreciationYears: num(p.proposedDepreciationYears),
+      materials: p.proposedMaterials,
     },
+    quantity,
+    laborCostPerMonth,
+    hoursPerYear,
+    powerRateUSD,
+  );
+
+  // Savings are measured at EQUAL OUTPUT: the good pairs the proposed line delivers.
+  // Comparing each side's own natural capacity would reward simply running more hours.
+  const basisOutput = proposed.actualGoodCapacity;
+
+  const componentSpec: Array<{
+    key: SavingsComponent['key'];
+    currentAnnual: number;
+    proposedAnnual: number;
+  }> = [
+    { key: 'labor', currentAnnual: current.annualLaborCost, proposedAnnual: proposed.annualLaborCost },
+    { key: 'material', currentAnnual: current.annualMaterialCost, proposedAnnual: proposed.annualMaterialCost },
+    { key: 'energy', currentAnnual: current.annualEnergyCost, proposedAnnual: proposed.annualEnergyCost },
+    { key: 'maintenance', currentAnnual: current.annualMaintenance, proposedAnnual: proposed.annualMaintenance },
+    { key: 'consumables', currentAnnual: current.annualConsumables, proposedAnnual: proposed.annualConsumables },
+    { key: 'depreciation', currentAnnual: current.annualDepreciation, proposedAnnual: proposed.annualDepreciation },
+  ];
+
+  const bridge: SavingsComponent[] = componentSpec.map(({ key, currentAnnual, proposedAnnual }) => {
+    const currentPerPair = safeDiv(currentAnnual, current.actualGoodCapacity);
+    const proposedPerPair = safeDiv(proposedAnnual, proposed.actualGoodCapacity);
+    const perPairDelta = currentPerPair - proposedPerPair;
+    return {
+      key,
+      currentPerPair,
+      proposedPerPair,
+      perPairDelta,
+      annualDelta: perPairDelta * basisOutput,
+    };
+  });
+
+  const byKey = (key: SavingsComponent['key']) =>
+    bridge.find((c) => c.key === key)?.annualDelta ?? 0;
+
+  // Summing the components (rather than recomputing from totals) guarantees the
+  // bridge reconciles exactly to the headline number.
+  const totalAnnualSaving = bridge.reduce((sum, c) => sum + c.annualDelta, 0);
+  const fobImpact = bridge.reduce((sum, c) => sum + c.perPairDelta, 0);
+
+  // Operators required to deliver basisOutput at the CURRENT line's productivity.
+  const currentYield = 1 - clampPct(p.currentDefectRate) / 100;
+  const currentGrossForBasis = safeDiv(basisOutput, currentYield);
+  const currentStationsForBasis = safeDiv(currentGrossForBasis, num(p.currentPPH) * hoursPerYear);
+  const manpowerSaving = currentStationsForBasis * num(p.currentManpower) - proposed.manpowerDemand;
+
+  const grossInvestment = num(p.proposedUnitPrice) * quantity;
+  const netInvestment = (num(p.proposedUnitPrice) - num(p.currentUnitPrice)) * quantity;
+  // Both are reported; payback runs on net, since the current equipment is being
+  // displaced and only the incremental spend is new money.
+  const appliedInvestment = netInvestment;
+
+  let payback: Payback;
+  if (totalAnnualSaving <= 0) {
+    payback = { kind: 'none', annualLoss: -totalAnnualSaving };
+  } else if (appliedInvestment <= 0) {
+    payback = { kind: 'immediate' };
+  } else {
+    payback = { kind: 'months', months: appliedInvestment / (totalAnnualSaving / 12) };
+  }
+
+  const roiMonths =
+    payback.kind === 'months' ? payback.months : payback.kind === 'immediate' ? 0 : null;
+
+  return {
+    current,
+    proposed,
     savings: {
       manpowerSaving,
-      laborSaving,
-      materialSaving,
-      energySaving,
-      maintenanceSaving,
-      consumablesSaving,
+      laborSaving: byKey('labor'),
+      materialSaving: byKey('material'),
+      energySaving: byKey('energy'),
+      maintenanceSaving: byKey('maintenance'),
+      consumablesSaving: byKey('consumables'),
+      depreciationSaving: byKey('depreciation'),
       totalAnnualSaving,
-      fobImpact
+      fobImpact,
+      bridge,
     },
-    roiMonths
+    investment: {
+      gross: grossInvestment,
+      net: netInvestment,
+      basis: 'net',
+      applied: appliedInvestment,
+    },
+    payback,
+    roiMonths,
+    basisOutput,
+    assumptions,
   };
 };

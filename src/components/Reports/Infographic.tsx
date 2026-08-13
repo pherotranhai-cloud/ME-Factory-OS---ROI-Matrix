@@ -1,17 +1,34 @@
 import React from 'react';
 import { TrendingUp, Users, Zap, CheckCircle2 } from 'lucide-react';
 
+import { ROIParams, ROIResults } from '../../types';
+
 interface InfographicProps {
   data: {
-    title: string;
-    keyStats: string[];
-    highlights: string[];
+    title?: string;
+    keyStats?: string[];
+    highlights?: string[];
   };
-  params: any;
-  results: any;
+  params: ROIParams;
+  results: ROIResults | null;
 }
 
+/** Model output is not guaranteed to carry every key, and payback may be null. */
+const money = (n: number | null | undefined): string =>
+  typeof n === 'number' && Number.isFinite(n) ? Math.round(n).toLocaleString() : '—';
+
+const paybackLabel = (results: ROIResults | null): string => {
+  if (!results) return '—';
+  switch (results.payback.kind) {
+    case 'months': return results.payback.months.toFixed(1);
+    case 'immediate': return 'Now';
+    case 'none': return 'None';
+  }
+};
+
 export const Infographic: React.FC<InfographicProps> = ({ data, params, results }) => {
+  const keyStats = data?.keyStats ?? [];
+  const highlights = data?.highlights ?? [];
   return (
     <div 
       id="infographic-card"
@@ -25,7 +42,7 @@ export const Infographic: React.FC<InfographicProps> = ({ data, params, results 
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white">
-            {data.title || 'CAPEX ROI ANALYSIS'}
+            {data?.title || 'CAPEX ROI ANALYSIS'}
           </h1>
           <div className="h-1 w-32 bg-emerald-500 mx-auto rounded-full" />
           <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest pt-2">
@@ -37,17 +54,21 @@ export const Infographic: React.FC<InfographicProps> = ({ data, params, results 
         <div className="grid grid-cols-3 gap-6">
           <div className="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 text-center space-y-2">
             <TrendingUp className="mx-auto text-emerald-400" size={32} />
-            <div className="text-3xl font-black text-white">${results.savings.totalAnnualSaving.toLocaleString()}</div>
+            <div className="text-3xl font-black text-white">${money(results?.savings.totalAnnualSaving)}</div>
             <div className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Annual Savings</div>
           </div>
           <div className="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 text-center space-y-2">
             <Zap className="mx-auto text-amber-400" size={32} />
-            <div className="text-3xl font-black text-white">{results.roiMonths.toFixed(1)}</div>
+            <div className="text-3xl font-black text-white">{paybackLabel(results)}</div>
             <div className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">ROI (Months)</div>
           </div>
           <div className="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 text-center space-y-2">
             <Users className="mx-auto text-blue-400" size={32} />
-            <div className="text-3xl font-black text-white">-{params.currentManpower - params.proposedManpower}</div>
+            {/* Use the engine's equal-output figure; the old inline subtraction
+                ignored machineQuantity and disagreed with the report (P1-08). */}
+            <div className="text-3xl font-black text-white">
+              {results ? `-${results.savings.manpowerSaving.toFixed(1)}` : '—'}
+            </div>
             <div className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Labor Reduction</div>
           </div>
         </div>
@@ -59,7 +80,7 @@ export const Infographic: React.FC<InfographicProps> = ({ data, params, results 
               <CheckCircle2 size={16} /> Key Metrics
             </h3>
             <div className="space-y-3">
-              {data.keyStats.map((stat, i) => (
+              {keyStats.map((stat, i) => (
                 <div key={i} className="flex items-center gap-3 bg-zinc-800/30 p-3 rounded-xl border border-zinc-700/50">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full" />
                   <span className="text-zinc-300 text-sm font-medium">{stat}</span>
@@ -72,7 +93,7 @@ export const Infographic: React.FC<InfographicProps> = ({ data, params, results 
               <Zap size={16} /> Project Highlights
             </h3>
             <div className="space-y-3">
-              {data.highlights.map((highlight, i) => (
+              {highlights.map((highlight, i) => (
                 <div key={i} className="flex items-center gap-3 bg-zinc-800/30 p-3 rounded-xl border border-zinc-700/50">
                   <div className="w-2 h-2 bg-purple-500 rounded-full" />
                   <span className="text-zinc-300 text-sm font-medium">{highlight}</span>

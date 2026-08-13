@@ -373,7 +373,10 @@ async function startServer() {
             topStats: {
               totalInvestment,
               avgROI,
-              totalFOBSavings: avgFobImpact,
+              // P1-07: this used to return the AVERAGE under a field named "total",
+              // and the card label said total. Both are now reported explicitly.
+              totalFOBSavings: fobSum,
+              avgFOBImpact: avgFobImpact,
               activeProjects: activeCount
             },
             statusDistribution: Object.entries(distribution).map(([name, value]) => ({ name, value })),
