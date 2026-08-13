@@ -2,7 +2,37 @@
 
 **Date:** 2026-08-13
 **Scope:** Three requested priorities — (1) ROI calculation accuracy and report clarity, (2) AI-powered analysis, (3) Excel export fidelity (formulas, images, data).
-**Status:** Plan for approval. No production code changed yet.
+**Status:** **Implemented.** All five phases delivered on `claude/upgrade-action-plan-90d0sf`. See §8 for what shipped and what was deliberately left.
+
+---
+
+## 0. Delivery status
+
+| Phase | Status | Notes |
+|---|---|---|
+| 0 — Foundation | Done | strict mode, React types, Vitest, CI |
+| 1 — ROI engine | Done | P1-01 … P1-08 fixed, 29 tests |
+| 2 — Report clarity | Done | cost bridge, sensitivity, assumptions, 8 tests |
+| 3 — Excel export | Done | images, formula durability, live model, 21 tests |
+| 4 — AI hardening | Done | prompts module, Zod validation, bounded calls, 17 tests |
+
+**75 tests passing, 0 type errors under `strict`, build green.**
+
+Decisions taken with the product owner during implementation:
+
+- **Investment basis:** report both gross and net; payback runs on **net incremental**.
+- **Canonical backend:** `server.ts`. `/api/chat` was ported into it.
+- **Historical data:** no migration; affected reports are flagged in the UI.
+
+Deliberately not done, and why:
+
+- `netlify/functions/server.ts` is **left in place** — deleting a deployment target
+  is the owner's call, not a side effect of this work.
+- `report_embeddings` still stores no vectors (P2-07). Semantic search over past
+  projects is a feature in its own right and is scoped separately.
+- `src/init-db.ts` and `src/seed.ts` are dead (nothing imports them,
+  `better-sqlite3` is not a dependency, the app moved to Supabase). They are
+  excluded from type-checking and flagged here for removal rather than deleted.
 
 ---
 
@@ -209,6 +239,30 @@ Blocked on the P0-04 backend decision.
 **Total: 19–24 working days** for one full-time developer. Phases 2, 3, and 4 can
 overlap across two developers once Phase 1 lands, bringing the calendar to roughly
 three weeks.
+
+---
+
+## 8. Verifying this yourself
+
+```bash
+npm install
+npm run lint     # 0 errors under strict
+npm test         # 75 tests
+npm run build
+npm run dev      # http://localhost:5000
+```
+
+The four checks that matter most, none of which a unit test can fully cover:
+
+1. **Quantity invariance.** Set `machineQuantity` to 1, then 4. Cost per pair must
+   not move, and the payback must not change. This is the defect that made every
+   proposal look better the more units you ordered.
+2. **Cross-surface agreement.** For one project, the payback on screen, in the PDF
+   and in the workbook must be identical.
+3. **Workbook portability.** Open an export in Excel, Google Sheets **and**
+   LibreOffice. No repair prompt, formulas show values in all three, photos present.
+4. **Live model.** Change a value on the workbook's `Inputs` sheet and confirm the
+   payback recalculates.
 
 ---
 
