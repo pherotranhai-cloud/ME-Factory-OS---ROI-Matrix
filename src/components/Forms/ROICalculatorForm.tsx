@@ -3,7 +3,7 @@ import { Upload, X, Sparkles, Plus, Trash2, Download, FileSpreadsheet, Image as 
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ROIParams, MaterialItem } from '../../types';
+import { ROIParams, MaterialItem, DEFAULT_ASSUMPTIONS } from '../../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -409,6 +409,25 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
               <div className="grid grid-cols-2 gap-4">
                 <InputField label={t.workingHoursPerDay || 'Working Hours / Day'} value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" tooltip="Total operational hours per shift/day." />
                 <InputField label={t.localLaborCost || 'Local Labor Cost'} value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" tooltip="Average monthly salary including benefits for one operator (USD)." />
+              </div>
+
+              {/* Promoted out of hardcoded engine constants so a reviewer can see
+                  and change them. Tariffs differ materially across VN/ID/MY. */}
+              <div className="grid grid-cols-2 gap-4">
+                <InputField
+                  label={t.workingDaysPerYear || 'Working Days / Year'}
+                  value={params.daysPerYear ?? DEFAULT_ASSUMPTIONS.daysPerYear}
+                  onChange={(v: any) => setParams({ ...params, daysPerYear: v })}
+                  suffix="days"
+                  tooltip="Operating days per year. Default 312 assumes a 6-day week."
+                />
+                <InputField
+                  label={t.energyTariff || 'Energy Tariff'}
+                  value={params.powerRateUSD ?? DEFAULT_ASSUMPTIONS.powerRateUSD}
+                  onChange={(v: any) => setParams({ ...params, powerRateUSD: v })}
+                  suffix="USD/kWh"
+                  tooltip="Electricity cost per kWh at this site. Default $0.075 — confirm before comparing projects across countries."
+                />
               </div>
             </div>
           </motion.div>

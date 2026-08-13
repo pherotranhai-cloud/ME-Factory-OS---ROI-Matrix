@@ -36,6 +36,27 @@ function cn(...inputs: ClassValue[]) {
 /** A single slice/bar in the dashboard charts, as returned by /api/dashboard/analytics. */
 type ChartSlice = { name: string; value: number };
 
+/**
+ * Reports saved before the engine fixes carry figures that were wrong at the
+ * time of writing: investment_cost was saved as `undefined` (P1-02), and the
+ * quantity-scaling defect (P1-01) inflated savings in proportion to order size.
+ * Existing rows are deliberately left untouched — they are flagged here instead
+ * so nobody reads a stale number as current.
+ */
+export const needsRecalculation = (report: any): boolean =>
+  report?.investment_cost === null ||
+  report?.investment_cost === undefined ||
+  Number(report?.investment_cost) === 0;
+
+export const RecalculateBadge = () => (
+  <span
+    title="Saved before the ROI engine corrections. Open and re-save to refresh these figures."
+    className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap"
+  >
+    Recalculate
+  </span>
+);
+
 export const StatusBadge = ({ status }: { status: string }) => {
   const colors: any = {
     'Draft': 'bg-slate-200 text-slate-700 border-slate-300',
@@ -383,7 +404,10 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
               {filteredReports.map((r) => (
                 <tr key={r.id} className="border-b border-ims-primary/5 hover:bg-ims-primary/5 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-sm text-[#002D32]">{r.machine_name || 'Unnamed Project'}</div>
+                    <div className="font-bold text-sm text-[#002D32] flex items-center gap-2">
+                      {r.machine_name || 'Unnamed Project'}
+                      {needsRecalculation(r) && <RecalculateBadge />}
+                    </div>
                     <div className="text-[10px] text-slate-500 mt-1 font-mono">{r.project_id || `REQ-${r.id}`} • {r.shoe_model}</div>
                   </td>
                   <td className="px-6 py-4">
@@ -398,7 +422,10 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                     </span>
                   </td>
                   <td className="px-6 py-4 font-mono text-sm text-ims-primary">
-                    {(r.roi_months || r.payback_period || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} mo
+                    {/* null means the proposal never pays back — distinct from 0. */}
+                    {r.roi_months === null || r.roi_months === undefined
+                      ? <span className="text-red-600 font-bold not-italic">No payback</span>
+                      : `${Number(r.roi_months).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} mo`}
                   </td>
                   <td className="px-6 py-4 text-right relative">
                     <div className="flex items-center justify-end gap-2">
