@@ -46,6 +46,7 @@ export default function App() {
     aiEvaluation, setAiEvaluation,
     isEvaluating, setIsEvaluating,
     isSaving, setIsSaving,
+    chatMessages, setChatMessages,
     resetForm,
     triggerRefresh,
     refreshTrigger
@@ -141,8 +142,9 @@ export default function App() {
         body: JSON.stringify({ prompt, targetLanguage: lang })
       });
 
-      if (!response.ok) throw new Error('AI Evaluation failed');
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      // The server returns a readable sentence; show that rather than a status code.
+      if (!response.ok) throw new Error(data?.error || 'AI evaluation failed.');
       setAiEvaluation(data);
     } catch (error: any) {
       console.error("AI Error:", error);
@@ -165,13 +167,13 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           params: params,
-          results: advancedResults
+          results: advancedResults,
+          targetLanguage: lang
         })
       });
 
-      if (!response.ok) throw new Error('Infographic generation failed');
-      
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || 'Infographic generation failed.');
       setInfographicData(data);
     } catch (err: any) {
       console.error(err);
@@ -333,7 +335,7 @@ export default function App() {
             setViewMode('form');
             setActiveTab('roi'); 
           }} />}
-          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} />}
+          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
           {activeTab === 'roi' && (
             <div className="max-w-5xl mx-auto">
               {viewMode === 'form' ? (

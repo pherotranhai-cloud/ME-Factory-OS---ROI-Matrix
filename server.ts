@@ -7,7 +7,23 @@ import cors from "cors";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import serverless from "serverless-http";
-import OpenAI from "openai";
+import {
+  callStructured,
+  projectContext,
+  projectHistory,
+  EvaluationSchema,
+  InfographicSchema,
+  ChatSchema,
+  AIError,
+} from "./src/server/ai";
+import {
+  evaluationSystemPrompt,
+  chatSystemPrompt,
+  infographicSystemPrompt,
+  infographicUserPrompt,
+  resolveLanguage,
+  VERDICTS,
+} from "./src/server/prompts";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -421,95 +437,123 @@ async function startServer() {
     }
   });
 
+  /* ----------------------------- AI routes -----------------------------
+   * All three share src/server/ai.ts for bounded calls, schema validation and
+   * a single repair retry, and src/server/prompts for the rubric. Routes no
+   * longer hold prompt text of their own — that is what allowed one deployment
+   * to ship without the audit rubric entirely (P2-02).
+   * -------------------------------------------------------------------- */
+
+  const sendAIError = (res: any, err: unknown, label: string) => {
+    if (err instanceof AIError) {
+      console.error(`${label}:`, err.message, err.detail ?? "");
+      return res.status(err.status).json({ error: err.message });
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`${label}:`, message);
+    return res.status(502).json({ error: "The AI service is unavailable. Please try again." });
+  };
+
   app.post("/api/evaluate", async (req, res) => {
     try {
-      const { prompt, targetLanguage = "EN" } = req.body;
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "OpenAI API Key not configured" });
+      const { prompt, targetLanguage } = req.body ?? {};
+      if (typeof prompt !== "string" || prompt.trim() === "") {
+        return res.status(400).json({ error: "A project payload is required." });
+      }
 
-      const allowedVerdict = targetLanguage === "VI"
-        ? '["Duyệt Gấp", "Cân Nhắc Kỹ", "Bỏ Qua"]'
-        : '["Immediate Approval", "Proceed with Caution", "Reject / Drop"]';
-
-      const systemPromptTemplate = `You are a Senior Factory Operations & Industrial Investment Director in footwear and discrete manufacturing. Your goal is to critically evaluate Equipment ROI, Line Balancing, and Automation Proposals.
-
-### CORE AUDIT RULES:
-1. **Tone & Style:** Authoritative, direct, highly analytical, and business-focused. Zero fluff, no greetings, no informal slang.
-2. **Language Enforcement (STRICT):** You MUST render all text values inside the output JSON using the language specified in target_language: "{{TARGET_LANGUAGE}}". Do NOT mix languages.
-3. **Data Sanity & Critical Audit (Industrial Engineering Lens):**
-   - Headcount Reduction: Challenge fractional FTEs (e.g., 0.4 FTE implies shared operator; flag if impractical).
-   - Hidden Costs: Flag zero maintenance or missing consumable costs as high risk for machine breakdown/OEE degradation.
-   - Line Balancing: Verify if the drastic Cycle Time (CT) reduction solves an actual bottleneck or creates WIP buffer downstream.
-   - Financial Realism: Evaluate Payback Period against machinery lifespan and operational volatility.
-
-### OUTPUT JSON SCHEMA:
-Return ONLY a valid JSON object matching this strict structure:
-{
-  "summary": "2-sentence executive summary focusing on financial impact, manpower, and operational sanity.",
-  "verdict": "{{ALLOWED_VERDICT_ENUM}}",
-  "pros": ["3-4 concrete operational/financial advantages"],
-  "cons": ["2-3 critical data gaps, unrealistic assumptions, or financial drawbacks"],
-  "risks": ["3-4 operational risks regarding OEE, bottleneck shifting, maintenance, or actual manpower execution"]
-}`;
-
-      const systemPrompt = systemPromptTemplate
-        .replace("{{TARGET_LANGUAGE}}", targetLanguage)
-        .replace("{{ALLOWED_VERDICT_ENUM}}", allowedVerdict);
-
-      const openai = new OpenAI({ apiKey });
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.4-mini-2026-03-17",
-        messages: [
-          { 
-            role: "system", 
-            content: systemPrompt 
-          },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
+      const lang = resolveLanguage(targetLanguage);
+      const evaluation = await callStructured({
+        system: evaluationSystemPrompt(lang),
+        user: prompt,
+        schema: EvaluationSchema,
       });
-      const responseText = response.choices[0]?.message?.content || "{}";
-      res.json(JSON.parse(responseText));
-    } catch (err: any) {
-      console.error("OpenAI Error:", err);
-      res.status(500).json({ error: err.message });
+
+      // Nudge an off-enum verdict back onto the contract the UI styles against,
+      // rather than letting it render as a rejection.
+      const allowed = VERDICTS[lang];
+      if (!allowed.includes(evaluation.verdict)) {
+        const match = allowed.find((v) => evaluation.verdict.toLowerCase().includes(v.toLowerCase()));
+        evaluation.verdict = match ?? allowed[1];
+      }
+
+      res.json(evaluation);
+    } catch (err) {
+      sendAIError(res, err, "Evaluate");
+    }
+  });
+
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { messages, contextData, targetLanguage } = req.body ?? {};
+      const lang = resolveLanguage(targetLanguage);
+
+      let history: unknown[] = [];
+      if (supabase) {
+        try {
+          const { data } = await supabase
+            .from("roi_reports")
+            .select("project_id, machine_name, vendor, shoe_model, investment_cost, annual_savings, roi_months, fob_impact, ai_verdict, status")
+            .order("created_at", { ascending: false })
+            .limit(8);
+          history = data ?? [];
+        } catch (e) {
+          console.error("Chat history lookup failed:", e);
+        }
+      }
+
+      const turns: Array<{ role: string; content?: string; text?: string }> = Array.isArray(messages)
+        ? messages
+        : typeof messages === "string"
+          ? [{ role: "user", content: messages }]
+          : [];
+
+      if (turns.length === 0) return res.status(400).json({ error: "A message is required." });
+
+      const transcript = turns
+        .slice(-12)
+        .map((m) => `${m.role === "assistant" || m.role === "model" ? "Assistant" : "User"}: ${m.content ?? m.text ?? ""}`)
+        .join("\n");
+
+      const { text } = await callStructured({
+        system: chatSystemPrompt(lang, projectContext(contextData), projectHistory(history)),
+        user: transcript,
+        schema: ChatSchema,
+        json: false,
+      });
+
+      res.json({ text });
+    } catch (err) {
+      sendAIError(res, err, "Chat");
     }
   });
 
   app.post("/api/infographic", async (req, res) => {
     try {
-      const { params, results } = req.body;
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "OpenAI API Key not configured" });
+      const { params, results, targetLanguage } = req.body ?? {};
+      const lang = resolveLanguage(targetLanguage);
 
-      const prompt = `
-        Dựa vào dữ liệu dự án CAPEX sau, hãy tạo nội dung ngắn gọn để làm Infographic báo cáo.
-        Thiết bị: ${params?.equipmentName || 'Máy mới'}
-        Tiết kiệm: ${results?.savings?.totalAnnualSaving || 0} USD/năm
-        ROI: ${results?.roiMonths || 0} tháng
-        
-        Trả về ĐÚNG định dạng JSON gồm:
-        {
-          "title": "Tiêu đề Infographic",
-          "keyStats": [ "Stat 1", "Stat 2", "Stat 3" ],
-          "highlights": [ "Điểm nổi bật 1", "Điểm nổi bật 2" ]
-        }
-      `;
+      const payback = results?.payback?.kind === "months"
+        ? `${Number(results.payback.months).toFixed(1)} months`
+        : results?.payback?.kind === "immediate"
+          ? "Immediate"
+          : "No payback";
 
-      const openai = new OpenAI({ apiKey });
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.4-mini-2026-03-17",
-        messages: [
-          { role: "system", content: "You are an industrial infographic generator. Always return valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
+      const copy = await callStructured({
+        system: infographicSystemPrompt(lang),
+        user: infographicUserPrompt({
+          equipmentName: params?.equipmentName ?? "",
+          shoeModel: params?.shoeModel ?? "",
+          annualSaving: Number(results?.savings?.totalAnnualSaving) || 0,
+          payback,
+          costPerPairDelta: Number(results?.savings?.fobImpact) || 0,
+          operatorsFreed: Number(results?.savings?.manpowerSaving) || 0,
+        }),
+        schema: InfographicSchema,
       });
-      const responseText = response.choices[0]?.message?.content || "{}";
-      res.json(JSON.parse(responseText));
-    } catch (err: any) {
-      console.error("OpenAI Infographic Error:", err);
-      res.status(500).json({ error: err.message });
+
+      res.json(copy);
+    } catch (err) {
+      sendAIError(res, err, "Infographic");
     }
   });
 
