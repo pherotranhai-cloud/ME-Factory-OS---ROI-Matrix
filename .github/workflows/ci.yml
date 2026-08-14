@@ -40,7 +40,12 @@ jobs:
       # relative imports fail to resolve and Node's type-stripping rejects any
       # TypeScript that emits code (parameter properties, enums, decorators).
       # Both of those took the backend down once. Boot it the way Render does.
+      #
+      # Node 24 only. Node 20 cannot execute a .ts entrypoint at all without a
+      # loader flag (ERR_UNKNOWN_FILE_EXTENSION), and nothing boots the server
+      # on Node 20 in practice — the Netlify build only compiles the frontend.
       - name: Server boots under the production start command
+        if: matrix.node == '24'
         run: |
           npx --yes ts-node server.ts > /tmp/server.log 2>&1 &
           pid=$!
