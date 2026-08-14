@@ -8,12 +8,19 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20 matches the Netlify build (netlify.toml), 24 matches the Render
+        # runtime. They differ in how they handle TypeScript, so both are checked.
+        node: ['20', '24']
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install dependencies
@@ -24,3 +31,38 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Type-checking and bundling both pass on code that cannot actually boot:
+      # production runs `ts-node server.ts` directly, where extensionless
+      # relative imports fail to resolve and Node's type-stripping rejects any
+      # TypeScript that emits code (parameter properties, enums, decorators).
+      # Both of those took the backend down once. Boot it the way Render does.
+      #
+      # Node 24 only. Node 20 cannot execute a .ts entrypoint at all without a
+      # loader flag (ERR_UNKNOWN_FILE_EXTENSION), and nothing boots the server
+      # on Node 20 in practice — the Netlify build only compiles the frontend.
+      - name: Server boots under the production start command
+        if: matrix.node == '24'
+        run: |
+          npx --yes ts-node server.ts > /tmp/server.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 45); do
+            if curl -sf -o /dev/null http://localhost:5000/; then
+              echo "Server responded on attempt $i"
+              kill $pid 2>/dev/null || true
+              exit 0
+            fi
+            if ! kill -0 $pid 2>/dev/null; then
+              echo "::error::Server process exited before binding a port"
+              cat /tmp/server.log
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::Server did not respond within 90s"
+          cat /tmp/server.log
+          kill $pid 2>/dev/null || true
+          exit 1
