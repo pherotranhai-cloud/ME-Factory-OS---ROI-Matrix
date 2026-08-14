@@ -17,6 +17,9 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { API_BASE_URL } from './config/api';
 import { ROIResults } from './types';
+import { ProjectWorkspace } from './components/Project/ProjectWorkspace';
+import { ProjectInput } from './domain/model';
+import { newProjectDefaults, fromLegacyParams } from './domain/adapt';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -53,6 +56,9 @@ export default function App() {
   } = useAppState();
 
   const [editingReportData, setEditingReportData] = React.useState<any>(null);
+  // The rebuilt analysis path. Kept beside the legacy calculator rather than
+  // replacing it, so stored projects keep opening while the new model beds in.
+  const [project, setProject] = React.useState<ProjectInput>(() => newProjectDefaults());
   const [viewMode, setViewMode] = React.useState<'form' | 'preview'>('form');
   const [aiPrompt, setAiPrompt] = React.useState('');
   const [isGeneratingInfographic, setIsGeneratingInfographic] = React.useState(false);
@@ -319,6 +325,11 @@ export default function App() {
             setEditingReportData(report);
             setProjectName(report.machine_name || 'ROI Project');
             setParams(report.form_data);
+            // Also seed the rebuilt analysis path, so a stored project can be
+            // reviewed under the corrected model. The import is faithful to the
+            // stored inputs; the figures it produces will differ, and the
+            // workspace surfaces why.
+            if (report.form_data) setProject(fromLegacyParams(report.form_data));
             setAiEvaluation(report.ai_evaluation);
             setUploadedImages(report.image_url);
             setEditingReportId(report.id);
@@ -329,12 +340,20 @@ export default function App() {
             setEditingReportData(report); 
             setProjectName(report.machine_name || 'ROI Project');
             setParams(report.form_data);
+            // Also seed the rebuilt analysis path, so a stored project can be
+            // reviewed under the corrected model. The import is faithful to the
+            // stored inputs; the figures it produces will differ, and the
+            // workspace surfaces why.
+            if (report.form_data) setProject(fromLegacyParams(report.form_data));
             setAiEvaluation(report.ai_evaluation);
             setUploadedImages(report.image_url);
             setEditingReportId(report.id);
             setViewMode('form');
             setActiveTab('roi'); 
           }} />}
+          {activeTab === 'analysis' && (
+            <ProjectWorkspace value={project} onChange={setProject} />
+          )}
           {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
           {activeTab === 'roi' && (
             <div className="max-w-5xl mx-auto">

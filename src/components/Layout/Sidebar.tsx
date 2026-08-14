@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FilePlus, Cpu, Languages, History, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Cpu, Languages, History, MessageSquare, Calculator } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Language } from '../../types';
@@ -34,6 +34,12 @@ export const Sidebar = ({ activeTab, setActiveTab, lang, setLang, resetForm, t }
 
       <nav className="flex-1 py-6 space-y-1">
         <SidebarItem icon={LayoutDashboard} label={t.dashboard} active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+        <SidebarItem
+          icon={Calculator}
+          label={t.analysis || 'Analysis'}
+          active={activeTab === 'analysis'}
+          onClick={() => setActiveTab('analysis')}
+        />
         <SidebarItem 
           icon={FilePlus} 
           label={t.newRoi} 
