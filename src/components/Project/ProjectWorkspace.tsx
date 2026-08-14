@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileSpreadsheet, ClipboardList, BarChart3, RotateCcw, Save, AlertTriangle } from 'lucide-react';
+import { FileSpreadsheet, ClipboardList, BarChart3, RotateCcw, Save, AlertTriangle, FileText } from 'lucide-react';
 import { ProjectInput } from '../../domain/model';
 import { calculateProject } from '../../domain/engine';
 import { validateProject, hasBlockingErrors } from '../../domain/validate';
@@ -26,6 +26,7 @@ interface Props {
    */
   onChange: (next: ProjectInput, opts?: { replaced?: boolean }) => void;
   onExport?: (input: ProjectInput) => void;
+  onExportPdf?: (input: ProjectInput) => void;
   onSave?: (input: ProjectInput) => Promise<void>;
   /** True when this project was adapted from a stored legacy report. */
   wasImported?: boolean;
@@ -33,7 +34,7 @@ interface Props {
 }
 
 export const ProjectWorkspace: React.FC<Props> = ({
-  value, onChange, onExport, onSave, wasImported, isSaving,
+  value, onChange, onExport, onExportPdf, onSave, wasImported, isSaving,
 }) => {
   const [view, setView] = React.useState<'entry' | 'report'>('entry');
 
@@ -108,6 +109,17 @@ export const ProjectWorkspace: React.FC<Props> = ({
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#006D77]/20 bg-white/70 text-[11px] font-bold text-[#4A6B6F] hover:bg-[#83C5BE]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Save size={13} /> {isSaving ? 'Saving…' : 'Save'}
+            </button>
+          )}
+          {onExportPdf && (
+            <button
+              type="button"
+              onClick={() => onExportPdf(value)}
+              disabled={blocked}
+              title={blocked ? 'Resolve the blocking errors before exporting' : 'Export to PDF'}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#006D77]/20 bg-white/70 text-[11px] font-bold text-[#4A6B6F] hover:bg-[#83C5BE]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <FileText size={13} /> PDF
             </button>
           )}
           {onExport && (

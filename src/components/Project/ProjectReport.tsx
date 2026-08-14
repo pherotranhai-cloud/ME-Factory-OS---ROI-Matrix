@@ -27,32 +27,46 @@ const paybackLabel = (r: ProjectResult): string => {
   }
 };
 
-/** A figure the reader can expand to see the arithmetic behind it. */
-const Traced: React.FC<{ label: string; value: string; formula: string; tone?: 'good' | 'bad' }> = ({
-  label, value, formula, tone,
-}) => {
+/**
+ * A figure the reader can expand to see the arithmetic behind it.
+ *
+ * `printable` forces every derivation open and drops the control affordances:
+ * paper has no disclosure triangle, and a PDF that hid the arithmetic would
+ * defeat the point of tracing it.
+ */
+const Traced: React.FC<{
+  label: string; value: string; formula: string; tone?: 'good' | 'bad'; printable?: boolean;
+}> = ({ label, value, formula, tone, printable }) => {
   const [open, setOpen] = React.useState(false);
+  const shown = printable || open;
+  const valueClass = `font-mono text-[12px] tabular-nums font-semibold ${
+    tone === 'good' ? 'text-emerald-700' : tone === 'bad' ? 'text-red-700' : 'text-[#002D32]'
+  }`;
+
   return (
-    <div className="border-b border-[#006D77]/10 last:border-0">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 py-2 text-left hover:bg-[#83C5BE]/10 transition-colors px-2 -mx-2 rounded"
-      >
-        <span className="flex items-center gap-1.5 text-[11px] text-[#4A6B6F]">
-          <ChevronRight size={11} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
-          {label}
-        </span>
-        <span
-          className={`font-mono text-[12px] tabular-nums font-semibold ${
-            tone === 'good' ? 'text-emerald-700' : tone === 'bad' ? 'text-red-700' : 'text-[#002D32]'
-          }`}
+    // A derivation card runs taller than a page, so the card itself cannot be
+    // kept whole — but a figure must never be separated from its arithmetic.
+    <div className={`border-b border-[#006D77]/10 last:border-0${printable ? ' pdf-block' : ''}`}>
+      {printable ? (
+        <div className="w-full flex items-center justify-between gap-3 py-2">
+          <span className="text-[11px] text-[#4A6B6F]">{label}</span>
+          <span className={valueClass}>{value}</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between gap-3 py-2 text-left hover:bg-[#83C5BE]/10 transition-colors px-2 -mx-2 rounded"
         >
-          {value}
-        </span>
-      </button>
-      {open && (
-        <div className="pb-2 pl-5 pr-2 -mt-0.5">
+          <span className="flex items-center gap-1.5 text-[11px] text-[#4A6B6F]">
+            <ChevronRight size={11} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+            {label}
+          </span>
+          <span className={valueClass}>{value}</span>
+        </button>
+      )}
+      {shown && (
+        <div className={`pb-2 pr-2 -mt-0.5 ${printable ? '' : 'pl-5'}`}>
           <code className="text-[10px] font-mono text-[#4A6B6F]/90 leading-relaxed block bg-[#EDF6F9] rounded px-2 py-1.5">
             {formula}
           </code>
@@ -78,8 +92,10 @@ const Kpi: React.FC<{ label: string; value: string; note?: string; tone?: 'good'
   </div>
 );
 
-const ScenarioBlock: React.FC<{ table: ScenarioTable; dominant: boolean }> = ({ table, dominant }) => (
-  <div className="rounded-xl border border-[#006D77]/20 bg-white/70 p-4">
+const ScenarioBlock: React.FC<{ table: ScenarioTable; dominant: boolean; printable?: boolean }> = ({
+  table, dominant, printable,
+}) => (
+  <div className={`rounded-xl border border-[#006D77]/20 bg-white/70 p-4${printable ? ' pdf-block' : ''}`}>
     <div className="flex items-baseline justify-between mb-1">
       <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#002D32]">{table.title}</h4>
       {dominant && (
@@ -123,7 +139,12 @@ const ScenarioBlock: React.FC<{ table: ScenarioTable; dominant: boolean }> = ({ 
   </div>
 );
 
-export const ProjectReport: React.FC<{ result: ProjectResult; issues: Issue[] }> = ({ result, issues }) => {
+export const ProjectReport: React.FC<{
+  result: ProjectResult;
+  issues: Issue[];
+  /** Render for paper: every derivation expanded, no interactive affordances. */
+  printable?: boolean;
+}> = ({ result, issues, printable }) => {
   const scenarios = React.useMemo(() => allScenarios(result.input), [result.input]);
   const dominant = React.useMemo(() => dominantScenario(scenarios), [scenarios]);
   const breakEven = React.useMemo(() => materialBreakEven(result.input, 24), [result.input]);
@@ -131,6 +152,8 @@ export const ProjectReport: React.FC<{ result: ProjectResult; issues: Issue[] }>
   const errors = issues.filter((i) => i.severity === 'error');
   const warnings = issues.filter((i) => i.severity === 'warning');
   const material = result.savings.lines.find((l) => l.key === 'material');
+  // html2pdf is told to avoid breaking inside anything carrying this class.
+  const block = printable ? ' pdf-block' : '';
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -205,12 +228,13 @@ export const ProjectReport: React.FC<{ result: ProjectResult; issues: Issue[] }>
         </div>
       )}
 
-      <div className="rounded-xl border border-[#006D77]/20 bg-white/70 p-4">
+      <div className={`rounded-xl border border-[#006D77]/20 bg-white/70 p-4${block}`}>
         <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#002D32] mb-1">
           Annual operating cost
         </h3>
         <p className="text-[10px] text-[#4A6B6F]/80 mb-3">
-          Both sides at {count(result.basisOutput.value)} pairs/yr. Click any figure to see its arithmetic.
+          Both sides at {count(result.basisOutput.value)} pairs/yr.
+          {printable ? ' Each figure is shown with the arithmetic behind it.' : ' Click any figure to see its arithmetic.'}
           {result.investment.basis === 'cash' && ' Depreciation is excluded — capital is recovered through the payback above.'}
         </p>
         <div className="overflow-x-auto">
@@ -255,7 +279,10 @@ export const ProjectReport: React.FC<{ result: ProjectResult; issues: Issue[] }>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      {/* Stacked for print. A multi-column CSS grid cannot be paginated: when a
+          card is too tall for the remaining page, the break moves that one cell
+          and leaves its row-mate stranded beside an empty column. */}
+      <div className={printable ? 'space-y-4' : 'grid md:grid-cols-2 gap-4'}>
         {(['baseline', 'proposed'] as const).map((which) => {
           const s = result[which];
           return (
@@ -263,14 +290,14 @@ export const ProjectReport: React.FC<{ result: ProjectResult; issues: Issue[] }>
               <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#002D32] mb-2">
                 {s.label} — how it was derived
               </h3>
-              <Traced label="Available time per unit" value={`${count(s.schedule.availableSecondsPerYear.value / 3600)} h/yr`} formula={s.schedule.availableSecondsPerYear.formula} />
-              <Traced label="Output per unit" value={`${count(s.fleet.outputPerUnit.value)} prs/yr`} formula={s.fleet.outputPerUnit.formula} />
-              <Traced label="Units required" value={count(s.fleet.units.value)} formula={s.fleet.units.formula} />
-              <Traced label="Pairs to produce" value={count(s.fleet.grossPairsRequired.value)} formula={s.fleet.grossPairsRequired.formula} />
-              <Traced label="Operators implied" value={s.operators.value.toFixed(1)} formula={s.operators.formula} />
-              <Traced label="Capital" value={money(s.capex.value, 0)} formula={s.capex.formula} />
+              <Traced printable={printable} label="Available time per unit" value={`${count(s.schedule.availableSecondsPerYear.value / 3600)} h/yr`} formula={s.schedule.availableSecondsPerYear.formula} />
+              <Traced printable={printable} label="Output per unit" value={`${count(s.fleet.outputPerUnit.value)} prs/yr`} formula={s.fleet.outputPerUnit.formula} />
+              <Traced printable={printable} label="Units required" value={count(s.fleet.units.value)} formula={s.fleet.units.formula} />
+              <Traced printable={printable} label="Pairs to produce" value={count(s.fleet.grossPairsRequired.value)} formula={s.fleet.grossPairsRequired.formula} />
+              <Traced printable={printable} label="Operators implied" value={s.operators.value.toFixed(1)} formula={s.operators.formula} />
+              <Traced printable={printable} label="Capital" value={money(s.capex.value, 0)} formula={s.capex.formula} />
               {s.lines.map((l) => (
-                <Traced key={l.key} label={l.label} value={money(l.annual.value, 0)} formula={l.annual.formula} />
+                <Traced printable={printable} key={l.key} label={l.label} value={money(l.annual.value, 0)} formula={l.annual.formula} />
               ))}
             </div>
           );
@@ -281,9 +308,9 @@ export const ProjectReport: React.FC<{ result: ProjectResult; issues: Issue[] }>
         <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#002D32]">
           How much margin is there
         </h3>
-        <div className="grid lg:grid-cols-3 gap-4">
+        <div className={printable ? 'space-y-4' : 'grid lg:grid-cols-3 gap-4'}>
           {scenarios.map((t) => (
-            <ScenarioBlock key={t.key} table={t} dominant={dominant?.key === t.key} />
+            <ScenarioBlock key={t.key} table={t} dominant={dominant?.key === t.key} printable={printable} />
           ))}
         </div>
       </div>

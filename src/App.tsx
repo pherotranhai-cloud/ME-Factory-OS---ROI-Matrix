@@ -14,6 +14,7 @@ import html2canvas from 'html2canvas';
 
 import { exportToExcel } from './utils/excelExport';
 import { exportProjectToExcel } from './utils/projectExcel';
+import { exportProjectToPdf } from './utils/projectPdf';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { API_BASE_URL } from './config/api';
@@ -98,6 +99,15 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       alert('Excel export failed: ' + err.message);
+    }
+  };
+
+  const handleExportProjectPdf = async (input: ProjectInput) => {
+    try {
+      await exportProjectToPdf(input);
+    } catch (err: any) {
+      console.error(err);
+      alert('PDF export failed: ' + err.message);
     }
   };
 
@@ -432,6 +442,7 @@ export default function App() {
                 }
               }}
               onExport={handleExportProject}
+              onExportPdf={handleExportProjectPdf}
               onSave={handleSaveProject}
               wasImported={projectWasImported}
               isSaving={isSaving}
