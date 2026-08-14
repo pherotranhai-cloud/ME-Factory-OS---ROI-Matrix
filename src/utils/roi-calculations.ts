@@ -5,6 +5,7 @@ import {
   SavingsComponent,
   Payback,
   MaterialItem,
+  SideSchedule,
   DEFAULT_ASSUMPTIONS,
 } from '../types';
 
@@ -29,12 +30,39 @@ const clampPct = (pct: unknown): number => Math.min(Math.max(num(pct), 0), 100);
 export const resolveAssumptions = (p: Partial<ROIParams>) => {
   const daysPerYear = p.daysPerYear != null ? num(p.daysPerYear) : DEFAULT_ASSUMPTIONS.daysPerYear;
   const powerRateUSD = p.powerRateUSD != null ? num(p.powerRateUSD) : DEFAULT_ASSUMPTIONS.powerRateUSD;
-  const workingHoursPerDay = num(p.workingHoursPerDay);
+  const legacyHoursPerDay = num(p.workingHoursPerDay);
+
+  /**
+   * A side's schedule comes from `shifts x hours/shift` when supplied, because
+   * that is how the factory states it and it stays auditable. Reports saved
+   * before those fields existed fall back to the shared `workingHoursPerDay`,
+   * treated as a single shift, so their numbers do not move.
+   */
+  const schedule = (shifts?: number, hoursPerShift?: number): SideSchedule => {
+    const hasPerSide = shifts != null && hoursPerShift != null;
+    const shiftsPerDay = hasPerSide ? num(shifts) : 1;
+    const perShift = hasPerSide ? num(hoursPerShift) : legacyHoursPerDay;
+    const hoursPerDay = shiftsPerDay * perShift;
+    return {
+      shiftsPerDay,
+      hoursPerShift: perShift,
+      hoursPerDay,
+      hoursPerYear: hoursPerDay * daysPerYear,
+      fromLegacy: !hasPerSide,
+    };
+  };
+
+  const current = schedule(p.currentShiftsPerDay, p.currentHoursPerShift);
+  const proposed = schedule(p.proposedShiftsPerDay, p.proposedHoursPerShift);
+
   return {
     daysPerYear,
     powerRateUSD,
-    workingHoursPerDay,
-    hoursPerYear: workingHoursPerDay * daysPerYear,
+    current,
+    proposed,
+    // Deprecated mirrors, kept so existing consumers keep compiling.
+    workingHoursPerDay: current.hoursPerDay,
+    hoursPerYear: current.hoursPerYear,
   };
 };
 
@@ -117,7 +145,7 @@ const computeScenario = (
 
 export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
   const assumptions = resolveAssumptions(p);
-  const { hoursPerYear, powerRateUSD } = assumptions;
+  const { powerRateUSD } = assumptions;
 
   const quantity = num(p.machineQuantity);
   const laborCostPerMonth = num(p.localLaborCost);
@@ -136,7 +164,7 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
     },
     quantity,
     laborCostPerMonth,
-    hoursPerYear,
+    assumptions.current.hoursPerYear,
     powerRateUSD,
   );
 
@@ -154,7 +182,7 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
     },
     quantity,
     laborCostPerMonth,
-    hoursPerYear,
+    assumptions.proposed.hoursPerYear,
     powerRateUSD,
   );
 
@@ -199,7 +227,10 @@ export const calculateAdvancedROI = (p: ROIParams): ROIResults => {
   // Operators required to deliver basisOutput at the CURRENT line's productivity.
   const currentYield = 1 - clampPct(p.currentDefectRate) / 100;
   const currentGrossForBasis = safeDiv(basisOutput, currentYield);
-  const currentStationsForBasis = safeDiv(currentGrossForBasis, num(p.currentPPH) * hoursPerYear);
+  const currentStationsForBasis = safeDiv(
+    currentGrossForBasis,
+    num(p.currentPPH) * assumptions.current.hoursPerYear,
+  );
   const manpowerSaving = currentStationsForBasis * num(p.currentManpower) - proposed.manpowerDemand;
 
   const grossInvestment = num(p.proposedUnitPrice) * quantity;

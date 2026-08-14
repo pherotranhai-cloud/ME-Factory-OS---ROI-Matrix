@@ -18,15 +18,26 @@ export const AssumptionsPanel: React.FC<{ params: ROIParams; results: ROIResults
   t,
 }) => {
   const a = results.assumptions;
+  const shift = (s: typeof a.current) =>
+    `${s.shiftsPerDay} × ${s.hoursPerShift}h = ${s.hoursPerDay}h/day`;
+
+  // Shown per side: the two lines frequently run different shift counts, and a
+  // reader comparing cost per pair needs to see that before trusting the ratio.
   const rows: Array<[string, string]> = [
-    [t?.workingHours || 'Working hours / day', `${a.workingHoursPerDay}`],
+    [t?.shiftCurrent || 'Shift pattern — current', shift(a.current)],
+    [t?.shiftProposed || 'Shift pattern — proposed', shift(a.proposed)],
     [t?.workingDays || 'Working days / year', `${a.daysPerYear}`],
-    [t?.operatingHours || 'Operating hours / year', a.hoursPerYear.toLocaleString()],
+    [
+      t?.operatingHours || 'Operating hours / year',
+      `${a.current.hoursPerYear.toLocaleString()} / ${a.proposed.hoursPerYear.toLocaleString()}`,
+    ],
     [t?.energyTariff || 'Energy tariff', `$${a.powerRateUSD.toFixed(4)}/kWh`],
     [t?.laborCost || 'Labour cost', `$${(params.localLaborCost || 0).toLocaleString()}/op/mo`],
     [t?.machineQuantity || 'Stations in scope', `${params.machineQuantity}`],
     [t?.paybackBasis || 'Payback basis', results.investment.basis === 'net' ? 'Net incremental' : 'Gross'],
   ];
+
+  const legacySchedule = a.current.fromLegacy || a.proposed.fromLegacy;
 
   return (
     <div>
@@ -47,6 +58,12 @@ export const AssumptionsPanel: React.FC<{ params: ROIParams; results: ROIResults
         {t?.assumptionsNote ||
           'Energy tariff and working calendar vary by site. Confirm both before comparing projects across countries.'}
       </p>
+      {legacySchedule && (
+        <p className="text-[9px] !text-amber-700 mt-1 leading-relaxed font-medium">
+          {t?.legacyScheduleNote ||
+            'This project has no per-side shift pattern recorded, so both sides use the same working day. If the two lines run different shift counts, set them on the form — the cost-per-pair comparison depends on it.'}
+        </p>
+      )}
     </div>
   );
 };

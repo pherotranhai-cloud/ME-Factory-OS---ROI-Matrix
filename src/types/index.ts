@@ -64,8 +64,30 @@ export interface ROIParams {
   proposedMaterials: MaterialItem[];
 
   // Shared operating assumptions
+  /**
+   * Legacy shared operating hours. Retained so reports saved before per-side
+   * shift patterns existed still load; used as the fallback for BOTH sides when
+   * the per-side fields below are absent. Prefer the per-side fields.
+   */
   workingHoursPerDay: number;
   localLaborCost: number; // Salary, USD per operator per month
+
+  /**
+   * Shift pattern, PER SIDE.
+   *
+   * The two sides genuinely run different patterns — e.g. a traditional cutting
+   * line on 2 shifts of 7.5 h against an automatic cutter on 3 shifts of 7.5 h.
+   * A single shared figure cannot express that, and getting it wrong distorts
+   * the ratio between the sides rather than scaling both equally, which is
+   * exactly what cost-per-pair and the savings bridge measure.
+   *
+   * Optional so stored reports deserialize; read them through
+   * `resolveAssumptions()`, which applies the legacy fallback.
+   */
+  currentShiftsPerDay?: number;
+  currentHoursPerShift?: number;
+  proposedShiftsPerDay?: number;
+  proposedHoursPerShift?: number;
 
   /**
    * Assumptions promoted out of hardcoded constants (P1-06). Optional on the
@@ -183,7 +205,26 @@ export interface ROIResults {
   assumptions: {
     daysPerYear: number;
     powerRateUSD: number;
+    /** Per-side shift pattern and the hours it works out to. */
+    current: SideSchedule;
+    proposed: SideSchedule;
+    /**
+     * Legacy shared figure, kept only so older reports and any consumer that has
+     * not moved to the per-side fields still render. Equals `current.hoursPerDay`.
+     * @deprecated read `assumptions.current` / `assumptions.proposed` instead.
+     */
     workingHoursPerDay: number;
+    /** @deprecated equals `current.hoursPerYear`. */
     hoursPerYear: number;
   };
+}
+
+/** Operating schedule for one side of the comparison. */
+export interface SideSchedule {
+  shiftsPerDay: number;
+  hoursPerShift: number;
+  hoursPerDay: number;
+  hoursPerYear: number;
+  /** True when this side fell back to the legacy shared `workingHoursPerDay`. */
+  fromLegacy: boolean;
 }

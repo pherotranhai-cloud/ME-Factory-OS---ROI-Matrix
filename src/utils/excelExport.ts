@@ -197,21 +197,31 @@ export const buildWorkbook = async (
   };
 
   addShared('qty', 'Machine Quantity (stations in scope)', qty, 'stations', FMT.int);
-  addShared('hours', 'Working Hours / Day', assumptions.workingHoursPerDay, 'h/day', FMT.num2);
   addShared('days', 'Working Days / Year', assumptions.daysPerYear, 'days/yr', FMT.int);
   addShared('rate', 'Energy Tariff', assumptions.powerRateUSD, 'USD/kWh', FMT.usd4);
   addShared('labor', 'Local Labour Cost', Number(params.localLaborCost) || 0, 'USD/op/month', FMT.usd2);
 
+  // Per side: the two lines often run different shift counts, and a single
+  // shared figure distorts the ratio between them rather than scaling both.
+  addInput('shifts', 'Shifts / Day', assumptions.current.shiftsPerDay, assumptions.proposed.shiftsPerDay, 'shifts', FMT.num2);
+  addInput('hoursPerShift', 'Hours / Shift', assumptions.current.hoursPerShift, assumptions.proposed.hoursPerShift, 'h/shift', FMT.num2);
+
   const hoursRow = wsIn.addRow({ label: 'Operating Hours / Year', unit: 'h/yr' });
   setFormula(
     hoursRow.getCell('current'),
-    `${ref.hours}*${ref.days}`,
-    assumptions.hoursPerYear,
+    `${ref.shifts_cur}*${ref.hoursPerShift_cur}*${ref.days}`,
+    assumptions.current.hoursPerYear,
     FMT.int,
   );
-  wsIn.mergeCells(`B${hoursRow.number}:C${hoursRow.number}`);
+  setFormula(
+    hoursRow.getCell('proposed'),
+    `${ref.shifts_pro}*${ref.hoursPerShift_pro}*${ref.days}`,
+    assumptions.proposed.hoursPerYear,
+    FMT.int,
+  );
   styleDataRow(hoursRow);
-  ref.hoursPerYear = `Inputs!$B$${hoursRow.number}`;
+  ref.hoursPerYear_cur = `Inputs!$B$${hoursRow.number}`;
+  ref.hoursPerYear_pro = `Inputs!$C$${hoursRow.number}`;
 
   const spacer = wsIn.addRow({ label: 'Per-station parameters' });
   styleSectionTitle(spacer);
@@ -389,8 +399,8 @@ export const buildWorkbook = async (
   };
 
   const capRow = addFinRow('Annual Capacity (gross pairs)',
-    `${ref.pph_cur}*${ref.qty}*${ref.hoursPerYear}`, current.annualCapacity,
-    `${ref.pph_pro}*${ref.qty}*${ref.hoursPerYear}`, proposed.annualCapacity,
+    `${ref.pph_cur}*${ref.qty}*${ref.hoursPerYear_cur}`, current.annualCapacity,
+    `${ref.pph_pro}*${ref.qty}*${ref.hoursPerYear_pro}`, proposed.annualCapacity,
     FMT.int, 'cap');
 
   const goodRow = addFinRow('Annual Good Output (pairs)',
@@ -404,8 +414,8 @@ export const buildWorkbook = async (
     FMT.usd2, 'labor');
 
   const energyRow = addFinRow('Annual Energy Cost',
-    `${ref.kw_cur}*${ref.qty}*${ref.hoursPerYear}*${ref.rate}`, current.annualEnergyCost,
-    `${ref.kw_pro}*${ref.qty}*${ref.hoursPerYear}*${ref.rate}`, proposed.annualEnergyCost,
+    `${ref.kw_cur}*${ref.qty}*${ref.hoursPerYear_cur}*${ref.rate}`, current.annualEnergyCost,
+    `${ref.kw_pro}*${ref.qty}*${ref.hoursPerYear_pro}*${ref.rate}`, proposed.annualEnergyCost,
     FMT.usd2, 'energy');
 
   // Scaled by quantity, matching the engine. The old export wrote the raw
@@ -571,9 +581,11 @@ export const buildWorkbook = async (
   styleHeader(wsAss.getRow(1));
 
   ([
-    ['Working Hours / Day', assumptions.workingHoursPerDay, 'h/day', 'Shift length used for annual capacity.', FMT.num2],
+    ['Shift Pattern — Current', `${assumptions.current.shiftsPerDay} x ${assumptions.current.hoursPerShift}h = ${assumptions.current.hoursPerDay}h/day`, '', 'Per side: the two lines often run different shift counts.', undefined],
+    ['Shift Pattern — Proposed', `${assumptions.proposed.shiftsPerDay} x ${assumptions.proposed.hoursPerShift}h = ${assumptions.proposed.hoursPerDay}h/day`, '', 'A shared figure would distort the ratio between the sides, not scale both.', undefined],
+    ['Operating Hours / Year — Current', assumptions.current.hoursPerYear, 'h/yr', 'Shifts x hours per shift x working days.', FMT.int],
+    ['Operating Hours / Year — Proposed', assumptions.proposed.hoursPerYear, 'h/yr', 'Shifts x hours per shift x working days.', FMT.int],
     ['Working Days / Year', assumptions.daysPerYear, 'days/yr', 'Was hardcoded at 312 before this release.', FMT.int],
-    ['Operating Hours / Year', assumptions.hoursPerYear, 'h/yr', 'Hours per day x days per year.', FMT.int],
     ['Energy Tariff', assumptions.powerRateUSD, 'USD/kWh', 'Was hardcoded at $0.075. Varies materially by site (VN / ID / MY).', FMT.usd4],
     ['Local Labour Cost', Number(params.localLaborCost) || 0, 'USD/op/month', 'Fully loaded monthly cost per operator.', FMT.usd2],
     ['Machine Quantity', qty, 'stations', 'Applies to BOTH sides: N current stations replaced by N proposed.', FMT.int],

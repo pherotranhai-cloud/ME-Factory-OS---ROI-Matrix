@@ -326,3 +326,160 @@ describe('worked example (pending IE sign-off)', () => {
     expect(r.savings.manpowerSaving).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Per-side shift patterns.
+ *
+ * A single shared `workingHoursPerDay` cannot express two sides running
+ * different shift counts. Getting it wrong does not scale both sides equally —
+ * it distorts the RATIO between them, which is what cost/pair and the savings
+ * bridge measure.
+ *
+ * Reference case: the EMMA automatic cutter project exported on 2026-08-14.
+ * 5 stations, 309 days/yr, $300/op/month. Traditional cutting runs 2 shifts of
+ * 7.5 h with 7.74 operators at CT 132.67 s (27.13 pph); EMMA runs 3 shifts of
+ * 7.5 h with 6.77 operators at CT 37 s (97.3 pph). The workbook used 8 h/day for
+ * both, overstating labour per pair by 15/8 and 22.5/8 respectively.
+ */
+describe('per-side shift patterns', () => {
+  const emma = (over: Partial<ROIParams> = {}): ROIParams => baseParams({
+    machineQuantity: 5,
+    daysPerYear: 309,
+    localLaborCost: 300,
+    currentPPH: 27.13,
+    proposedPPH: 97.3,
+    currentManpower: 7.74,
+    proposedManpower: 6.77,
+    currentDefectRate: 2,
+    proposedDefectRate: 0,
+    currentUnitPrice: 4_579,
+    proposedUnitPrice: 57_750,
+    currentMaintenanceCostPerYear: 72.33,
+    proposedMaintenanceCostPerYear: 63,
+    currentConsumablesCostPerYear: 329.17,
+    proposedConsumablesCostPerYear: 1_361,
+    currentDepreciationYears: 1,
+    proposedDepreciationYears: 5,
+    currentPowerConsumptionKW: 0,
+    proposedPowerConsumptionKW: 0,
+    currentMaterials: [],
+    proposedMaterials: [],
+    currentShiftsPerDay: 2,
+    currentHoursPerShift: 7.5,
+    proposedShiftsPerDay: 3,
+    proposedHoursPerShift: 7.5,
+    ...over,
+  });
+
+  it('derives a different operating year for each side', () => {
+    const a = calculateAdvancedROI(emma()).assumptions;
+    expect(a.current.hoursPerDay).toBe(15);
+    expect(a.proposed.hoursPerDay).toBe(22.5);
+    expect(a.current.hoursPerYear).toBeCloseTo(4_635, 6);
+    expect(a.proposed.hoursPerYear).toBeCloseTo(6_952.5, 6);
+    expect(a.current.fromLegacy).toBe(false);
+  });
+
+  it('scales each side capacity by its own schedule', () => {
+    const r = calculateAdvancedROI(emma());
+    expect(r.current.annualCapacity).toBeCloseTo(27.13 * 5 * 4_635, 4);   // 628,737.75
+    expect(r.current.actualGoodCapacity).toBeCloseTo(628_737.75 * 0.98, 4); // 616,163.0
+    expect(r.proposed.annualCapacity).toBeCloseTo(97.3 * 5 * 6_952.5, 4);  // 3,382,391.25
+    expect(r.proposed.actualGoodCapacity).toBeCloseTo(3_382_391.25, 4);
+  });
+
+  it('leaves annual labour cost untouched — it is headcount, not hours', () => {
+    const r = calculateAdvancedROI(emma());
+    expect(r.current.annualLaborCost).toBeCloseTo(139_320, 6);
+    expect(r.proposed.annualLaborCost).toBeCloseTo(121_860, 6);
+  });
+
+  it('corrects labour per pair to the hand-checked figures', () => {
+    const r = calculateAdvancedROI(emma());
+    const labour = r.savings.bridge.find((c) => c.key === 'labor')!;
+
+    // Stated as the derivation rather than a rounded constant, so the test
+    // documents where the number comes from and cannot drift on rounding.
+    const currentGood = 27.13 * 5 * 4_635 * 0.98; // 616,162.995
+    const proposedGood = 97.3 * 5 * 6_952.5;      // 3,382,391.25
+
+    expect(labour.currentPerPair).toBeCloseTo(139_320 / currentGood, 9);
+    expect(labour.proposedPerPair).toBeCloseTo(121_860 / proposedGood, 9);
+    expect(labour.perPairDelta).toBeCloseTo(139_320 / currentGood - 121_860 / proposedGood, 9);
+
+    // Sanity-check the magnitudes a reader would recognise from the report.
+    expect(labour.currentPerPair).toBeCloseTo(0.2261, 4);
+    expect(labour.proposedPerPair).toBeCloseTo(0.0360, 4);
+    expect(labour.perPairDelta).toBeCloseTo(0.1901, 4);
+  });
+
+  it('reproduces the shared-hours error exactly as a ratio of the schedules', () => {
+    const perSide = calculateAdvancedROI(emma());
+    // What the 2026-08-14 workbook did: one shared 8 h/day for both sides.
+    const shared = calculateAdvancedROI(
+      emma({
+        currentShiftsPerDay: undefined,
+        currentHoursPerShift: undefined,
+        proposedShiftsPerDay: undefined,
+        proposedHoursPerShift: undefined,
+        workingHoursPerDay: 8,
+      }),
+    );
+
+    const lab = (r: typeof perSide) => r.savings.bridge.find((c) => c.key === 'labor')!;
+    expect(lab(shared).currentPerPair).toBeCloseTo(0.42395, 5);
+    expect(lab(shared).proposedPerPair).toBeCloseTo(0.10133, 5);
+
+    // The overstatement is precisely the hours ratio on each side.
+    expect(lab(shared).currentPerPair / lab(perSide).currentPerPair).toBeCloseTo(15 / 8, 6);
+    expect(lab(shared).proposedPerPair / lab(perSide).proposedPerPair).toBeCloseTo(22.5 / 8, 6);
+  });
+
+  it('still reconciles the bridge with asymmetric schedules', () => {
+    const r = calculateAdvancedROI(emma());
+    const summed = r.savings.bridge.reduce((s, c) => s + c.annualDelta, 0);
+    expect(summed).toBeCloseTo(r.savings.totalAnnualSaving, 6);
+    expect(r.savings.fobImpact).toBeCloseTo(r.current.costPerPair - r.proposed.costPerPair, 10);
+  });
+
+  it('keeps cost per pair invariant to quantity on asymmetric schedules', () => {
+    const q1 = calculateAdvancedROI(emma({ machineQuantity: 1 }));
+    const q5 = calculateAdvancedROI(emma({ machineQuantity: 5 }));
+    expect(q5.current.costPerPair).toBeCloseTo(q1.current.costPerPair, 10);
+    expect(q5.proposed.costPerPair).toBeCloseTo(q1.proposed.costPerPair, 10);
+  });
+
+  it('counts operators freed against the current side own schedule', () => {
+    const r = calculateAdvancedROI(emma());
+    const stations = r.basisOutput / 0.98 / (27.13 * 4_635);
+    expect(r.savings.manpowerSaving).toBeCloseTo(stations * 7.74 - 6.77 * 5, 6);
+  });
+});
+
+describe('legacy reports keep their existing numbers', () => {
+  it('falls back to the shared working day when no shift pattern is stored', () => {
+    const a = resolveAssumptions({ workingHoursPerDay: 8, daysPerYear: 309 });
+    expect(a.current.hoursPerDay).toBe(8);
+    expect(a.proposed.hoursPerDay).toBe(8);
+    expect(a.current.hoursPerYear).toBe(2_472);
+    expect(a.proposed.hoursPerYear).toBe(2_472);
+    expect(a.current.fromLegacy).toBe(true);
+    expect(a.proposed.fromLegacy).toBe(true);
+  });
+
+  it('produces identical results to the shared-hours model', () => {
+    const legacy = baseParams({ workingHoursPerDay: 8 });
+    const explicit = baseParams({
+      workingHoursPerDay: 8,
+      currentShiftsPerDay: 1,
+      currentHoursPerShift: 8,
+      proposedShiftsPerDay: 1,
+      proposedHoursPerShift: 8,
+    });
+    const a = calculateAdvancedROI(legacy);
+    const b = calculateAdvancedROI(explicit);
+    expect(a.current.costPerPair).toBeCloseTo(b.current.costPerPair, 12);
+    expect(a.savings.totalAnnualSaving).toBeCloseTo(b.savings.totalAnnualSaving, 8);
+    expect(a.roiMonths).toBeCloseTo(b.roiMonths!, 8);
+  });
+});

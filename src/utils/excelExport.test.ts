@@ -284,3 +284,91 @@ describe('project shapes', () => {
     expect(nonFinite).toEqual([]);
   });
 });
+
+/**
+ * The Inputs sheet must carry each side's own schedule, and the capacity and
+ * energy formulas must reference the matching cell. A shared hours cell would
+ * silently reintroduce the defect inside the workbook even with a correct engine.
+ */
+describe('per-side shift patterns reach the workbook', () => {
+  const emma = baseParams({
+    machineQuantity: 5,
+    daysPerYear: 309,
+    currentShiftsPerDay: 2,
+    currentHoursPerShift: 7.5,
+    proposedShiftsPerDay: 3,
+    proposedHoursPerShift: 7.5,
+  });
+
+  it('writes shifts and hours per shift for both sides', async () => {
+    const { workbook } = await roundTrip(emma);
+    const inputs = workbook.getWorksheet('Inputs')!;
+
+    const rowFor = (label: string) => {
+      let found: ExcelJS.Row | undefined;
+      inputs.eachRow((row) => {
+        if (String(row.getCell(1).value ?? '').trim() === label) found = row;
+      });
+      return found;
+    };
+
+    expect(rowFor('Shifts / Day')!.getCell(2).value).toBe(2);
+    expect(rowFor('Shifts / Day')!.getCell(3).value).toBe(3);
+    expect(rowFor('Hours / Shift')!.getCell(2).value).toBe(7.5);
+    expect(rowFor('Hours / Shift')!.getCell(3).value).toBe(7.5);
+  });
+
+  it('derives a different operating year per side, as a live formula', async () => {
+    const { workbook, results } = await roundTrip(emma);
+    const inputs = workbook.getWorksheet('Inputs')!;
+
+    let hoursRow: ExcelJS.Row | undefined;
+    inputs.eachRow((row) => {
+      if (String(row.getCell(1).value ?? '') === 'Operating Hours / Year') hoursRow = row;
+    });
+
+    const cur = hoursRow!.getCell(2).value as { formula: string; result: number };
+    const pro = hoursRow!.getCell(3).value as { formula: string; result: number };
+
+    expect(cur.result).toBeCloseTo(4_635, 6);
+    expect(pro.result).toBeCloseTo(6_952.5, 6);
+    expect(cur.result).toBeCloseTo(results.assumptions.current.hoursPerYear, 6);
+    expect(pro.result).toBeCloseTo(results.assumptions.proposed.hoursPerYear, 6);
+    // Each must reference its own column on the Inputs sheet, not a shared cell.
+    expect(cur.formula).toContain('$B$');
+    expect(pro.formula).toContain('$C$');
+  });
+
+  it('points capacity and energy at the matching side hours cell', async () => {
+    const { workbook } = await roundTrip(emma);
+    const fin = workbook.getWorksheet('Financials')!;
+
+    const formulaAt = (label: string, col: number) => {
+      let found: ExcelJS.Row | undefined;
+      fin.eachRow((row) => {
+        if (String(row.getCell(1).value ?? '') === label) found = row;
+      });
+      return (found!.getCell(col).value as { formula: string }).formula;
+    };
+
+    // Same row on Inputs, but the current column for current and proposed for proposed.
+    const capCur = formulaAt('Annual Capacity (gross pairs)', 2);
+    const capPro = formulaAt('Annual Capacity (gross pairs)', 3);
+    expect(capCur).not.toEqual(capPro);
+    expect(capCur).toMatch(/Inputs!\$B\$\d+$/);
+    expect(capPro).toMatch(/Inputs!\$C\$\d+$/);
+  });
+
+  it('still reconciles the whole workbook against the engine', async () => {
+    const { workbook, results } = await roundTrip(emma);
+    const fin = workbook.getWorksheet('Financials')!;
+    let capRow: ExcelJS.Row | undefined;
+    fin.eachRow((row) => {
+      if (String(row.getCell(1).value ?? '') === 'Annual Capacity (gross pairs)') capRow = row;
+    });
+    expect((capRow!.getCell(2).value as { result: number }).result)
+      .toBeCloseTo(results.current.annualCapacity, 4);
+    expect((capRow!.getCell(3).value as { result: number }).result)
+      .toBeCloseTo(results.proposed.annualCapacity, 4);
+  });
+});
