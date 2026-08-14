@@ -15,7 +15,7 @@ import {
   InfographicSchema,
   ChatSchema,
   AIError,
-} from "./src/server/ai";
+} from "./src/server/ai.ts";
 import {
   evaluationSystemPrompt,
   chatSystemPrompt,
@@ -23,7 +23,7 @@ import {
   infographicUserPrompt,
   resolveLanguage,
   VERDICTS,
-} from "./src/server/prompts";
+} from "./src/server/prompts/index.ts";
 
 import { createClient } from "@supabase/supabase-js";
 

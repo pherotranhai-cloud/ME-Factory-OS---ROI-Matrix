@@ -40,9 +40,17 @@ export type Evaluation = z.infer<typeof EvaluationSchema>;
 export type InfographicCopy = z.infer<typeof InfographicSchema>;
 
 export class AIError extends Error {
-  constructor(message: string, readonly status = 502, readonly detail?: string) {
+  // Declared and assigned explicitly rather than as constructor parameter
+  // properties: production runs `ts-node server.ts` on Node 24, which strips
+  // types rather than compiling them, and parameter properties emit code.
+  readonly status: number;
+  readonly detail?: string;
+
+  constructor(message: string, status = 502, detail?: string) {
     super(message);
     this.name = 'AIError';
+    this.status = status;
+    this.detail = detail;
   }
 }
 
