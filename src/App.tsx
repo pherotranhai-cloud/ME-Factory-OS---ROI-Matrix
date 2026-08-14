@@ -16,10 +16,22 @@ import { exportToExcel } from './utils/excelExport';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { API_BASE_URL } from './config/api';
+import { ROIResults } from './types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Annual saving as a percentage of the investment actually at risk (net, per the
+ * agreed basis). Returns 0 rather than NaN/Infinity when there is no net spend.
+ */
+const roiPercentage = (results: ROIResults | null): number => {
+  if (!results) return 0;
+  const basis = results.investment.applied;
+  if (!basis || !Number.isFinite(basis)) return 0;
+  return (results.savings.totalAnnualSaving / basis) * 100;
+};
 
 export default function App() {
   const {
@@ -34,6 +46,7 @@ export default function App() {
     aiEvaluation, setAiEvaluation,
     isEvaluating, setIsEvaluating,
     isSaving, setIsSaving,
+    chatMessages, setChatMessages,
     resetForm,
     triggerRefresh,
     refreshTrigger
@@ -51,7 +64,12 @@ export default function App() {
   const handleExportExcel = async () => {
     if (!advancedResults) return;
     try {
-      await exportToExcel(params, advancedResults, t);
+      // Photos and the AI verdict now travel into the workbook rather than being
+      // dropped on the floor (P3-01, P3-08).
+      await exportToExcel(params, advancedResults, t, {
+        images: uploadedImages ?? [],
+        aiEvaluation,
+      });
     } catch (err: any) {
       console.error(err);
       alert('Excel Export failed: ' + err.message);
@@ -74,18 +92,22 @@ export default function App() {
           machine_name: params.equipmentName,
           shoe_model: params.shoeModel,
           vendor: params.brand,
-          investment_cost: params.unitPrice,
+          // P1-02: this was `params.unitPrice`, a property that does not exist on
+          // ROIParams — it saved `undefined` and left roi_percentage as NaN.
+          investment_cost: advancedResults?.investment.gross ?? 0,
+          investment_cost_net: advancedResults?.investment.net ?? 0,
           labor_saving_cost: advancedResults?.savings.laborSaving,
           energy_saving_cost: advancedResults?.savings.energySaving,
           other_savings: (advancedResults?.savings.materialSaving || 0) + (advancedResults?.savings.maintenanceSaving || 0) + (advancedResults?.savings.consumablesSaving || 0),
           annual_savings: advancedResults?.savings.totalAnnualSaving,
-          roi_months: advancedResults?.roiMonths,
-          roi_percentage: advancedResults ? (advancedResults.savings.totalAnnualSaving / params.unitPrice) * 100 : 0,
+          // null when the proposal never pays back — distinguishable from "not computed".
+          roi_months: advancedResults?.roiMonths ?? null,
+          roi_percentage: roiPercentage(advancedResults),
           ai_verdict: typeof aiEvaluation?.verdict === 'string' ? aiEvaluation.verdict : (aiEvaluation?.verdict?.verdict || 'Draft'),
           ai_evaluation: aiEvaluation,
           status: 'Draft',
           tags: ['ROI', params.machineType, params.shoeModel],
-          annual_output: advancedResults?.machine.annualCapacity,
+          annual_output: advancedResults?.proposed.annualCapacity,
           fob_impact: advancedResults?.savings.fobImpact,
           image_url: uploadedImages,
           form_data: params
@@ -120,8 +142,9 @@ export default function App() {
         body: JSON.stringify({ prompt, targetLanguage: lang })
       });
 
-      if (!response.ok) throw new Error('AI Evaluation failed');
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      // The server returns a readable sentence; show that rather than a status code.
+      if (!response.ok) throw new Error(data?.error || 'AI evaluation failed.');
       setAiEvaluation(data);
     } catch (error: any) {
       console.error("AI Error:", error);
@@ -144,13 +167,13 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           params: params,
-          results: advancedResults
+          results: advancedResults,
+          targetLanguage: lang
         })
       });
 
-      if (!response.ok) throw new Error('Infographic generation failed');
-      
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || 'Infographic generation failed.');
       setInfographicData(data);
     } catch (err: any) {
       console.error(err);
@@ -312,7 +335,7 @@ export default function App() {
             setViewMode('form');
             setActiveTab('roi'); 
           }} />}
-          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} />}
+          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
           {activeTab === 'roi' && (
             <div className="max-w-5xl mx-auto">
               {viewMode === 'form' ? (

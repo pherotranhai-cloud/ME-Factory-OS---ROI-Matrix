@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -35,7 +35,10 @@ export const AIEvaluation = ({ aiEvaluation }: { aiEvaluation: any }) => {
         </span>
       </div>
       <p className="text-sm text-zinc-400 mb-8 leading-relaxed font-medium italic">"{aiEvaluation.summary}"</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Drawbacks and operational risks are separate concepts — the prompt asks
+          for them separately, and collapsing them into one column lost that
+          distinction for the reader (P1-09). */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="space-y-4">
           <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/80 flex items-center gap-2">
             <div className="w-1 h-3 bg-emerald-500 rounded-full" />
@@ -51,17 +54,25 @@ export const AIEvaluation = ({ aiEvaluation }: { aiEvaluation: any }) => {
           </ul>
         </div>
         <div className="space-y-4">
-          <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80 flex items-center gap-2">
-            <div className="w-1 h-3 bg-amber-500 rounded-full" />
-            Critical Risks
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-red-500/80 flex items-center gap-2">
+            <div className="w-1 h-3 bg-red-500 rounded-full" />
+            Drawbacks &amp; Data Gaps
           </h4>
           <ul className="space-y-3">
             {aiEvaluation.cons?.map((c: string, i: number) => (
               <li key={i} className="text-[11px] text-zinc-500 flex items-start gap-3 group">
-                <AlertTriangle size={14} className="text-red-500/50 mt-0.5 group-hover:text-red-500 transition-colors" />
+                <XCircle size={14} className="text-red-500/50 mt-0.5 group-hover:text-red-500 transition-colors" />
                 <span className="group-hover:text-zinc-300 transition-colors">{c}</span>
               </li>
             ))}
+          </ul>
+        </div>
+        <div className="space-y-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80 flex items-center gap-2">
+            <div className="w-1 h-3 bg-amber-500 rounded-full" />
+            Operational Risks
+          </h4>
+          <ul className="space-y-3">
             {aiEvaluation.risks?.map((r: string, i: number) => (
               <li key={i} className="text-[11px] text-zinc-500 flex items-start gap-3 group">
                 <AlertTriangle size={14} className="text-amber-500/50 mt-0.5 group-hover:text-amber-500 transition-colors" />

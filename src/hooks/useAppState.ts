@@ -3,6 +3,11 @@ import { ROIParams, ROIResults, Language } from '../types';
 import { calculateAdvancedROI } from '../utils/roi-calculations';
 export { calculateAdvancedROI };
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export const INITIAL_PARAMS: ROIParams = {
   shoeModel: '',
   date: new Date().toISOString().split('T')[0],
@@ -60,6 +65,9 @@ export const useAppState = () => {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // Held here rather than inside AIChatbot so the conversation survives a tab
+  // switch — the component unmounts whenever the user leaves the AI tab (P2-10).
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     setAdvancedResults(calculateAdvancedROI(params));
@@ -72,6 +80,7 @@ export const useAppState = () => {
     setUploadedImages([]);
     setEditingReportId(null);
     setCurrentStatus('Draft');
+    setChatMessages([]);
   };
 
   const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
@@ -88,6 +97,7 @@ export const useAppState = () => {
     aiEvaluation, setAiEvaluation,
     isEvaluating, setIsEvaluating,
     isSaving, setIsSaving,
+    chatMessages, setChatMessages,
     resetForm,
     refreshTrigger, triggerRefresh
   };

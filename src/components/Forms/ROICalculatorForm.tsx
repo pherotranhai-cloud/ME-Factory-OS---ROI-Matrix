@@ -3,7 +3,7 @@ import { Upload, X, Sparkles, Plus, Trash2, Download, FileSpreadsheet, Image as 
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ROIParams, MaterialItem } from '../../types';
+import { ROIParams, MaterialItem, DEFAULT_ASSUMPTIONS } from '../../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -409,6 +409,79 @@ export const ROICalculatorForm: React.FC<ROICalculatorFormProps> = ({ t, params,
               <div className="grid grid-cols-2 gap-4">
                 <InputField label={t.workingHoursPerDay || 'Working Hours / Day'} value={params.workingHoursPerDay} onChange={(v: any) => setParams({...params, workingHoursPerDay: v})} suffix="hrs" tooltip="Total operational hours per shift/day." />
                 <InputField label={t.localLaborCost || 'Local Labor Cost'} value={params.localLaborCost} onChange={(v: any) => setParams({...params, localLaborCost: v})} suffix="USD/mo" tooltip="Average monthly salary including benefits for one operator (USD)." />
+              </div>
+
+              {/* Promoted out of hardcoded engine constants so a reviewer can see
+                  and change them. Tariffs differ materially across VN/ID/MY. */}
+              <div className="grid grid-cols-2 gap-4">
+                <InputField
+                  label={t.workingDaysPerYear || 'Working Days / Year'}
+                  value={params.daysPerYear ?? DEFAULT_ASSUMPTIONS.daysPerYear}
+                  onChange={(v: any) => setParams({ ...params, daysPerYear: v })}
+                  suffix="days"
+                  tooltip="Operating days per year. Default 312 assumes a 6-day week."
+                />
+                <InputField
+                  label={t.energyTariff || 'Energy Tariff'}
+                  value={params.powerRateUSD ?? DEFAULT_ASSUMPTIONS.powerRateUSD}
+                  onChange={(v: any) => setParams({ ...params, powerRateUSD: v })}
+                  suffix="USD/kWh"
+                  tooltip="Electricity cost per kWh at this site. Default $0.075 — confirm before comparing projects across countries."
+                />
+              </div>
+
+              {/* The two sides often run different shift patterns — a manual line on
+                  2 shifts against an automatic cell on 3. One shared figure cannot
+                  express that, and it distorts the ratio the whole report rests on. */}
+              <div className="pt-4 border-t border-zinc-800">
+                <div className="flex items-baseline justify-between mb-3">
+                  <label className="factory-label !mb-0">{t.shiftPattern || 'Shift Pattern'}</label>
+                  <span className="text-[9px] text-zinc-500 font-mono">
+                    {t.currentVsProposed || 'Current vs Proposed'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0">
+                  <InputField
+                    label={`${t.current || 'Current'} — ${t.shiftsPerDay || 'Shifts / Day'}`}
+                    value={params.currentShiftsPerDay ?? 1}
+                    onChange={(v: any) => setParams({ ...params, currentShiftsPerDay: v })}
+                    suffix="shifts"
+                    tooltip="Number of shifts the CURRENT line runs per day."
+                  />
+                  <InputField
+                    label={`${t.proposed || 'Proposed'} — ${t.shiftsPerDay || 'Shifts / Day'}`}
+                    value={params.proposedShiftsPerDay ?? 1}
+                    onChange={(v: any) => setParams({ ...params, proposedShiftsPerDay: v })}
+                    suffix="shifts"
+                    tooltip="Number of shifts the PROPOSED line runs per day. An automatic cell often runs more shifts than the line it replaces."
+                  />
+                  <InputField
+                    label={`${t.current || 'Current'} — ${t.hoursPerShift || 'Hours / Shift'}`}
+                    value={params.currentHoursPerShift ?? params.workingHoursPerDay}
+                    onChange={(v: any) => setParams({ ...params, currentHoursPerShift: v })}
+                    suffix="hrs"
+                    tooltip="Productive hours in one shift on the CURRENT line."
+                  />
+                  <InputField
+                    label={`${t.proposed || 'Proposed'} — ${t.hoursPerShift || 'Hours / Shift'}`}
+                    value={params.proposedHoursPerShift ?? params.workingHoursPerDay}
+                    onChange={(v: any) => setParams({ ...params, proposedHoursPerShift: v })}
+                    suffix="hrs"
+                    tooltip="Productive hours in one shift on the PROPOSED line."
+                  />
+                </div>
+                {advancedResults && (
+                  <div className="grid grid-cols-2 gap-4 text-[10px] font-mono text-zinc-500 -mt-1">
+                    <div>
+                      = {advancedResults.assumptions.current.hoursPerDay} h/day ·{' '}
+                      {advancedResults.assumptions.current.hoursPerYear.toLocaleString()} h/yr
+                    </div>
+                    <div>
+                      = {advancedResults.assumptions.proposed.hoursPerDay} h/day ·{' '}
+                      {advancedResults.assumptions.proposed.hoursPerYear.toLocaleString()} h/yr
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

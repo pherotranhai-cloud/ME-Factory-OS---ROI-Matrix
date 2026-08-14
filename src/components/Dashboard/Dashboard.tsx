@@ -33,6 +33,30 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** A single slice/bar in the dashboard charts, as returned by /api/dashboard/analytics. */
+type ChartSlice = { name: string; value: number };
+
+/**
+ * Reports saved before the engine fixes carry figures that were wrong at the
+ * time of writing: investment_cost was saved as `undefined` (P1-02), and the
+ * quantity-scaling defect (P1-01) inflated savings in proportion to order size.
+ * Existing rows are deliberately left untouched — they are flagged here instead
+ * so nobody reads a stale number as current.
+ */
+export const needsRecalculation = (report: any): boolean =>
+  report?.investment_cost === null ||
+  report?.investment_cost === undefined ||
+  Number(report?.investment_cost) === 0;
+
+export const RecalculateBadge = () => (
+  <span
+    title="Saved before the ROI engine corrections. Open and re-save to refresh these figures."
+    className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap"
+  >
+    Recalculate
+  </span>
+);
+
 export const StatusBadge = ({ status }: { status: string }) => {
   const colors: any = {
     'Draft': 'bg-slate-200 text-slate-700 border-slate-300',
@@ -175,11 +199,11 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
     return stats?.investmentVsSaving || [];
   }, [stats]);
 
-  const statusDistribution = React.useMemo(() => {
+  const statusDistribution = React.useMemo<ChartSlice[]>(() => {
     return stats?.statusDistribution || [];
   }, [stats]);
 
-  const vendorInvestment = React.useMemo(() => {
+  const vendorInvestment = React.useMemo<ChartSlice[]>(() => {
     return stats?.vendorInvestment || [];
   }, [stats]);
 
@@ -248,7 +272,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                   <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    formatter={(value) => Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   />
                   <Bar dataKey="investment" name={t.investment || 'Investment'} fill="#006D77" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
                   <Bar dataKey="savings" name={t.savings || 'Savings'} fill="#83C5BE" fillOpacity={0.9} radius={[10, 10, 0, 0]} isAnimationActive={false} />
@@ -321,7 +345,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                   <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)', borderColor: 'rgba(0,109,119,0.2)', fontSize: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    formatter={(value: number) => value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    formatter={(value) => Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   />
                   <Bar dataKey="roi" name={t.roiMonths || 'ROI (Months)'} fill="#002124" fillOpacity={0.8} radius={[10, 10, 0, 0]} isAnimationActive={false} />
                 </BarChart>
@@ -380,7 +404,10 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
               {filteredReports.map((r) => (
                 <tr key={r.id} className="border-b border-ims-primary/5 hover:bg-ims-primary/5 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-sm text-[#002D32]">{r.machine_name || 'Unnamed Project'}</div>
+                    <div className="font-bold text-sm text-[#002D32] flex items-center gap-2">
+                      {r.machine_name || 'Unnamed Project'}
+                      {needsRecalculation(r) && <RecalculateBadge />}
+                    </div>
                     <div className="text-[10px] text-slate-500 mt-1 font-mono">{r.project_id || `REQ-${r.id}`} • {r.shoe_model}</div>
                   </td>
                   <td className="px-6 py-4">
@@ -395,7 +422,10 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                     </span>
                   </td>
                   <td className="px-6 py-4 font-mono text-sm text-ims-primary">
-                    {(r.roi_months || r.payback_period || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} mo
+                    {/* null means the proposal never pays back — distinct from 0. */}
+                    {r.roi_months === null || r.roi_months === undefined
+                      ? <span className="text-red-600 font-bold not-italic">No payback</span>
+                      : `${Number(r.roi_months).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} mo`}
                   </td>
                   <td className="px-6 py-4 text-right relative">
                     <div className="flex items-center justify-end gap-2">
