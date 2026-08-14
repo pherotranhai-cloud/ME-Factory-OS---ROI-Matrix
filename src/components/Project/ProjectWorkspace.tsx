@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileSpreadsheet, ClipboardList, BarChart3, RotateCcw } from 'lucide-react';
+import { FileSpreadsheet, ClipboardList, BarChart3, RotateCcw, Save, AlertTriangle } from 'lucide-react';
 import { ProjectInput } from '../../domain/model';
 import { calculateProject } from '../../domain/engine';
 import { validateProject, hasBlockingErrors } from '../../domain/validate';
@@ -19,11 +19,22 @@ import { ProjectReport } from './ProjectReport';
 
 interface Props {
   value: ProjectInput;
-  onChange: (next: ProjectInput) => void;
+  /**
+   * `replaced` marks the project being swapped wholesale rather than edited, so
+   * the caller can drop provenance it no longer applies to. Editing a field
+   * does not stop a project having been imported; loading a different one does.
+   */
+  onChange: (next: ProjectInput, opts?: { replaced?: boolean }) => void;
   onExport?: (input: ProjectInput) => void;
+  onSave?: (input: ProjectInput) => Promise<void>;
+  /** True when this project was adapted from a stored legacy report. */
+  wasImported?: boolean;
+  isSaving?: boolean;
 }
 
-export const ProjectWorkspace: React.FC<Props> = ({ value, onChange, onExport }) => {
+export const ProjectWorkspace: React.FC<Props> = ({
+  value, onChange, onExport, onSave, wasImported, isSaving,
+}) => {
   const [view, setView] = React.useState<'entry' | 'report'>('entry');
 
   const issues = React.useMemo(() => validateProject(value), [value]);
@@ -75,7 +86,7 @@ export const ProjectWorkspace: React.FC<Props> = ({ value, onChange, onExport })
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onChange(emma21Project)}
+            onClick={() => onChange(emma21Project, { replaced: true })}
             title="Load the IE-verified EMMA 21 reference project"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#006D77]/20 bg-white/70 text-[11px] font-bold text-[#4A6B6F] hover:bg-[#83C5BE]/20 transition-colors"
           >
@@ -83,11 +94,22 @@ export const ProjectWorkspace: React.FC<Props> = ({ value, onChange, onExport })
           </button>
           <button
             type="button"
-            onClick={() => onChange(newProjectDefaults())}
+            onClick={() => onChange(newProjectDefaults(), { replaced: true })}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#006D77]/20 bg-white/70 text-[11px] font-bold text-[#4A6B6F] hover:bg-[#83C5BE]/20 transition-colors"
           >
             <RotateCcw size={13} /> New
           </button>
+          {onSave && (
+            <button
+              type="button"
+              onClick={() => { void onSave(value); }}
+              disabled={blocked || isSaving}
+              title={blocked ? 'Resolve the blocking errors before saving' : 'Save this project'}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#006D77]/20 bg-white/70 text-[11px] font-bold text-[#4A6B6F] hover:bg-[#83C5BE]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save size={13} /> {isSaving ? 'Saving…' : 'Save'}
+            </button>
+          )}
           {onExport && (
             <button
               type="button"
@@ -101,6 +123,26 @@ export const ProjectWorkspace: React.FC<Props> = ({ value, onChange, onExport })
           )}
         </div>
       </div>
+
+      {/*
+        An imported project restates: the old engine costed each side at its own
+        capacity, this one costs both at a single volume. Saying so up front is
+        the difference between a corrected figure and a figure that looks like
+        someone changed the numbers.
+      */}
+      {wasImported && (
+        <div className="max-w-6xl mx-auto mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+          <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+          <p className="text-[12px] leading-relaxed text-amber-900">
+            <span className="font-bold">Imported from a stored report.</span> Every value you
+            entered has carried across unchanged, but the figures below will not match the ones
+            originally approved — the old model measured each side at its own output, this one
+            measures both at the same volume. Settings the old model implied (fixed fleet,
+            headcount labour, depreciation in operating cost, no efficiency or downtime
+            allowance) are carried over as-is; the warnings above say what they cost.
+          </p>
+        </div>
+      )}
 
       {view === 'entry'
         ? <ProjectForm value={value} onChange={onChange} issues={issues} />
