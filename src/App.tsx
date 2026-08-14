@@ -13,6 +13,7 @@ import { TRANSLATIONS } from './constants/translations';
 import html2canvas from 'html2canvas';
 
 import { exportToExcel } from './utils/excelExport';
+import { exportProjectToExcel } from './utils/projectExcel';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { API_BASE_URL } from './config/api';
@@ -79,6 +80,20 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       alert('Excel Export failed: ' + err.message);
+    }
+  };
+
+  /**
+   * The rebuilt path exports from the engine trace, so the workbook and the
+   * on-screen report are two renderings of one calculation rather than two
+   * transcriptions of it.
+   */
+  const handleExportProject = async (input: ProjectInput) => {
+    try {
+      await exportProjectToExcel(input, { images: uploadedImages ?? [] });
+    } catch (err: any) {
+      console.error(err);
+      alert('Excel export failed: ' + err.message);
     }
   };
 
@@ -352,7 +367,7 @@ export default function App() {
             setActiveTab('roi'); 
           }} />}
           {activeTab === 'analysis' && (
-            <ProjectWorkspace value={project} onChange={setProject} />
+            <ProjectWorkspace value={project} onChange={setProject} onExport={handleExportProject} />
           )}
           {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
           {activeTab === 'roi' && (
