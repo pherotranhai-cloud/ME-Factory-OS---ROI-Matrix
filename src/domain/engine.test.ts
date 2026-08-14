@@ -250,3 +250,63 @@ describe('schedule and fleet helpers are usable on their own', () => {
     expect(f.utilisation.value).toBeGreaterThan(1); // knowingly under-sized
   });
 });
+
+/**
+ * Scrap is charged where it is incurred. The line must produce
+ * `demand / yield` pairs to deliver `demand`, so material, labour and machine
+ * time all carry the scrapped units — but cost is stated per GOOD pair, so
+ * scrap surfaces as a higher unit cost rather than disappearing.
+ */
+describe('scrap and yield', () => {
+  const withYield = (baseline: number, proposed: number): ProjectInput => ({
+    ...emma21Project,
+    baseline: { ...emma21Project.baseline, yieldRate: baseline },
+    proposed: { ...emma21Project.proposed, yieldRate: proposed },
+  });
+
+  it('defaults to no scrap allowance, leaving the reference untouched', () => {
+    const r = calculateProject(emma21Project);
+    expect(r.baseline.fleet.grossPairsRequired.value).toBeCloseTo(3_403_580, 6);
+    expect(r.baseline.fleet.grossPairsRequired.formula).toContain('no scrap allowance');
+  });
+
+  it('grosses production up to cover the scrap', () => {
+    const r = calculateProject(withYield(0.95, 1));
+    expect(r.baseline.fleet.grossPairsRequired.value).toBeCloseTo(3_403_580 / 0.95, 4);
+    expect(r.proposed.fleet.grossPairsRequired.value).toBeCloseTo(3_403_580, 4);
+  });
+
+  it('charges material and labour on gross pairs', () => {
+    const base = calculateProject(emma21Project);
+    const scrappy = calculateProject(withYield(0.95, 1));
+    expect(lineOf(scrappy, 'baseline', 'material'))
+      .toBeCloseTo(lineOf(base, 'baseline', 'material') / 0.95, 2);
+    expect(lineOf(scrappy, 'baseline', 'labour'))
+      .toBeCloseTo(lineOf(base, 'baseline', 'labour') / 0.95, 2);
+  });
+
+  it('states cost per GOOD pair, so scrap raises unit cost', () => {
+    const base = calculateProject(emma21Project);
+    const scrappy = calculateProject(withYield(0.95, 1));
+    expect(scrappy.baseline.costPerPair.value).toBeGreaterThan(base.baseline.costPerPair.value);
+    expect(scrappy.baseline.costPerPair.formula).toContain('good pairs');
+  });
+
+  it('needs more machines to cover the scrap', () => {
+    // 3,403,580 / 0.80 = 4,254,475 gross, the same as the +25% demand row.
+    const r = calculateProject(withYield(0.8, 1));
+    expect(r.baseline.fleet.units.value).toBe(24);
+  });
+
+  it('rewards a yield improvement on the proposed side', () => {
+    const worse = calculateProject(withYield(0.95, 0.95));
+    const better = calculateProject(withYield(0.95, 1));
+    expect(better.savings.totalAnnual.value).toBeGreaterThan(worse.savings.totalAnnual.value);
+  });
+
+  it('survives a zero yield without producing infinities', () => {
+    const r = calculateProject(withYield(0, 1));
+    expect(Number.isFinite(r.savings.totalAnnual.value)).toBe(true);
+    expect(r.baseline.fleet.units.value).toBe(0);
+  });
+});

@@ -202,11 +202,16 @@ export const validateProject = (input: ProjectInput): Issue[] => {
 
     const fleet = result[side].fleet;
     if (cfg.fleet.mode === 'fixed' && fleet.utilisation.value > 1.0001) {
-      issues.push(err(
+      // A warning rather than an error: the unit costs are still meaningful, and
+      // this is the normal state of a project imported from the old model, which
+      // had one shared machine count and compared each side at its own capacity.
+      // What is compromised is the comparison, so it must be visible — not the
+      // arithmetic, so it need not block.
+      issues.push(warn(
         `FLEET_UNDERSIZED_${side.toUpperCase()}`,
         `${side}.fleet.units`,
-        `${label}: ${fmt(fleet.units.value, 0)} units deliver ${fmt(fleet.capacity.value, 0)} pairs against demand of ${fmt(Number(input.demandPairsPerYear), 0)} — ${fmt(fleet.utilisation.value * 100, 0)}% of capacity.`,
-        'Increase the unit count or reduce demand. As it stands the side cannot meet the volume it is being costed against.',
+        `${label}: ${fmt(fleet.units.value, 0)} units produce ${fmt(fleet.capacity.value, 0)} pairs against the ${fmt(fleet.grossPairsRequired.value, 0)} required — ${fmt(fleet.utilisation.value * 100, 0)}% of capacity.`,
+        'This side cannot actually make the volume it is being costed against, so its fixed costs are spread too thinly and the comparison flatters it. Size the fleet from demand, or reduce demand to what this side can deliver.',
       ));
     }
     if (cfg.fleet.mode === 'fixed' && fleet.utilisation.value > 0 && fleet.utilisation.value < 0.5) {

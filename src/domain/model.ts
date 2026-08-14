@@ -96,6 +96,19 @@ export interface SideInput {
   shift: Shift;
   fleet: FleetPolicy;
   material: MaterialSpec;
+  /**
+   * Share of produced pairs that are saleable, 0–1. Defaults to 1.
+   *
+   * Scrap is charged where it is actually incurred: the line must produce
+   * `demand / yieldRate` pairs to deliver `demand`, so material, labour and
+   * machine time all carry the scrapped units, while cost *per pair* is stated
+   * per GOOD pair.
+   *
+   * Leave at 1 when the yield is already embedded in `consumptionPerPair` — the
+   * IE model states leather as FT² per delivered pair, so grossing up again
+   * would double-count it.
+   */
+  yieldRate?: number;
 }
 
 export interface CalendarInput {
@@ -162,14 +175,16 @@ export interface SideSchedule {
 }
 
 export interface SideFleet {
-  /** Pairs one unit can deliver per year. */
+  /** Pairs one unit can produce per year, before scrap. */
   outputPerUnit: Traced;
   /** Units required (derived) or configured (fixed). */
   units: Traced;
-  /** Whole-side annual capacity. */
+  /** Whole-side annual capacity, before scrap. */
   capacity: Traced;
-  /** Fraction of capacity consumed by demand, 0–1. */
+  /** Fraction of capacity consumed by the gross pairs required, 0–1. */
   utilisation: Traced;
+  /** Pairs that must be produced to deliver demand, after scrap. */
+  grossPairsRequired: Traced;
 }
 
 export type CostKey =

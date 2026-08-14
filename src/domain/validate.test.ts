@@ -95,14 +95,19 @@ describe('cycle time rules', () => {
 });
 
 describe('capacity rules', () => {
-  it('errors when a fixed fleet cannot meet demand', () => {
+  it('warns when a fixed fleet cannot meet demand', () => {
     const issue = find({
       ...emma21Project,
       proposed: { ...emma21Project.proposed, fleet: { mode: 'fixed', units: 2 } },
     }, 'FLEET_UNDERSIZED_PROPOSED');
     expect(issue).toBeDefined();
-    expect(issue!.severity).toBe('error');
+    // A warning, not an error: the unit costs remain computable, and this is the
+    // normal state of a project imported from the old shared-machine-count
+    // model. What it compromises is the comparison, so it must be visible
+    // without blocking the project from opening.
+    expect(issue!.severity).toBe('warning');
     expect(issue!.message).toMatch(/% of capacity/);
+    expect(issue!.remedy).toMatch(/flatters it/);
   });
 
   it('warns when a fixed fleet is heavily under-used', () => {

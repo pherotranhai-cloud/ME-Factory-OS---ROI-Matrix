@@ -69,6 +69,12 @@ export const computeSchedule = (side: SideInput, calendar: ProjectInput['calenda
  * Fleet — how many units this side needs
  * ------------------------------------------------------------------ */
 
+/** Saleable share of produced pairs, clamped to a usable range. */
+export const yieldOf = (side: SideInput): number => {
+  const y = side.yieldRate == null ? 1 : num(side.yieldRate);
+  return Math.min(Math.max(y, 0), 1);
+};
+
 export const computeFleet = (
   side: SideInput,
   schedule: SideSchedule,
@@ -77,13 +83,17 @@ export const computeFleet = (
   const machineCT = num(side.machine.machineCycleSec);
   const perUnit = div(schedule.availableSecondsPerYear.value, machineCT);
 
+  // The line has to make the scrap too, so it is sized against gross pairs.
+  const yieldRate = yieldOf(side);
+  const gross = yieldRate > 0 ? div(demand, yieldRate) : 0;
+
   // Machines are bought whole. Deriving from takt and rounding up is what makes
   // 19 clicker presses and 6 automatic cutters fall out of the same demand.
   const units =
     side.fleet.mode === 'fixed'
       ? Math.max(0, num(side.fleet.units))
       : perUnit > 0
-        ? Math.ceil(div(demand, perUnit))
+        ? Math.ceil(div(gross, perUnit))
         : 0;
 
   const capacity = perUnit * units;
@@ -98,11 +108,18 @@ export const computeFleet = (
       units,
       side.fleet.mode === 'fixed'
         ? `configured at ${fmt(units, 0)} units`
-        : `ceil(${fmt(demand, 0)} pairs / ${fmt(perUnit, 0)} pairs per unit)`,
+        : `ceil(${fmt(gross, 0)} pairs / ${fmt(perUnit, 0)} pairs per unit)`,
       'units',
     ),
     capacity: traced(capacity, `${fmt(perUnit, 0)} pairs/unit x ${fmt(units, 0)} units`, 'pairs/yr'),
-    utilisation: traced(div(demand, capacity), `${fmt(demand, 0)} demand / ${fmt(capacity, 0)} capacity`, 'ratio'),
+    utilisation: traced(div(gross, capacity), `${fmt(gross, 0)} gross pairs / ${fmt(capacity, 0)} capacity`, 'ratio'),
+    grossPairsRequired: traced(
+      gross,
+      yieldRate === 1
+        ? `${fmt(demand, 0)} pairs (no scrap allowance)`
+        : `${fmt(demand, 0)} good pairs / ${fmt(yieldRate, 4)} yield`,
+      'pairs/yr',
+    ),
   };
 };
 
@@ -123,11 +140,15 @@ const LABELS: Record<CostKey, string> = {
 export const computeSide = (
   side: SideInput,
   input: ProjectInput,
-  volume: number,
+  /** Good pairs delivered. Cost per pair is stated against this. */
+  goodVolume: number,
 ): SideResult => {
   const schedule = computeSchedule(side, input.calendar);
-  const fleet = computeFleet(side, schedule, input.demandPairsPerYear);
+  const fleet = computeFleet(side, schedule, goodVolume);
   const units = fleet.units.value;
+
+  // Work is performed on every pair produced, including those later scrapped.
+  const volume = fleet.grossPairsRequired.value;
 
   const hourlyRate = div(num(input.labour.monthlyWage), num(input.labour.paidHoursPerMonth));
   const operatorHoursPerYear = num(input.labour.paidHoursPerMonth) * 12;
@@ -228,10 +249,12 @@ export const computeSide = (
     });
   }
 
+  // Costs are incurred on gross pairs but stated per GOOD pair, so scrap shows
+  // up as a higher unit cost rather than disappearing.
   for (const line of lines) {
     line.perPair = traced(
-      div(line.annual.value, volume),
-      `${money(line.annual.value, 2)} / ${fmt(volume, 0)} pairs`,
+      div(line.annual.value, goodVolume),
+      `${money(line.annual.value, 2)} / ${fmt(goodVolume, 0)} good pairs`,
       'USD/pair',
     );
   }
@@ -244,7 +267,7 @@ export const computeSide = (
     fleet,
     lines,
     totalAnnual: traced(total, lines.map((l) => l.label).join(' + '), 'USD/yr'),
-    costPerPair: traced(div(total, volume), `${money(total, 2)} / ${fmt(volume, 0)} pairs`, 'USD/pair'),
+    costPerPair: traced(div(total, goodVolume), `${money(total, 2)} / ${fmt(goodVolume, 0)} good pairs`, 'USD/pair'),
     capex,
     operators,
   };
