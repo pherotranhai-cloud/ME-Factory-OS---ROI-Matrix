@@ -17,7 +17,8 @@ import { exportProjectToExcel } from './utils/projectExcel';
 import { exportProjectToPdf } from './utils/projectPdf';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { API_BASE_URL } from './config/api';
+import { apiFetch, useAuth } from './lib/auth';
+import { SignIn } from './components/Auth/SignIn';
 import { type ROIResults } from './types';
 import { ProjectWorkspace } from './components/Project/ProjectWorkspace';
 import { type ProjectInput } from './domain/model';
@@ -71,6 +72,29 @@ export default function App() {
   const [infographicData, setInfographicData] = React.useState<any>(null);
   const infographicRef = React.useRef<HTMLDivElement>(null);
 
+  const { session, isSignedIn, isAdmin, email: authEmail, signOut } = useAuth();
+  const [showSignIn, setShowSignIn] = React.useState(false);
+
+  /**
+   * Only the dashboard answers an anonymous visitor, and then only its totals —
+   * the API withholds the per-project series, so there is nothing attributable
+   * to leak here even if this check were bypassed. Everything else needs a
+   * session. Hiding the tabs is a courtesy; the server is what enforces it.
+   */
+  const PUBLIC_TABS = ['dashboard'];
+  React.useEffect(() => {
+    if (session === undefined) return;
+    if (!isSignedIn && !PUBLIC_TABS.includes(activeTab)) {
+      setActiveTab('dashboard');
+      setShowSignIn(true);
+    }
+  }, [session, isSignedIn, activeTab, setActiveTab]);
+
+  const gate: 'loading' | 'signin' | 'ok' =
+    session === undefined ? 'loading'
+      : showSignIn && !isSignedIn ? 'signin'
+        : 'ok';
+
   const t = TRANSLATIONS[lang];
 
   const handleExportExcel = async () => {
@@ -121,12 +145,12 @@ export default function App() {
     setIsSaving(true);
     try {
       const isUpdate = !!editingReportData?.id;
-      const url = isUpdate ? `${API_BASE_URL}/roi-reports/${editingReportData.id}` : `${API_BASE_URL}/roi-reports`;
+      const path = isUpdate ? `/roi-reports/${editingReportData.id}` : '/roi-reports';
       const projectId = editingReportData?.project_id
         || `CAPEX-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       const summary = summarise(input);
 
-      const res = await fetch(url, {
+      const res = await apiFetch(path, {
         method: isUpdate ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -188,11 +212,11 @@ export default function App() {
     setIsSaving(true);
     try {
       const isUpdate = !!editingReportData?.id;
-      const url = isUpdate ? `${API_BASE_URL}/roi-reports/${editingReportData.id}` : `${API_BASE_URL}/roi-reports`;
+      const path = isUpdate ? `/roi-reports/${editingReportData.id}` : '/roi-reports';
       const method = isUpdate ? 'PATCH' : 'POST';
       const projectId = editingReportData?.project_id || `CAPEX-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-      
-      await fetch(url, {
+
+      const res = await apiFetch(path, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,7 +249,13 @@ export default function App() {
           form_data: params
         })
       });
-      
+      // Previously unchecked, so a rejected save still reported success — which
+      // now matters, because a 401 or 403 is a perfectly ordinary outcome.
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `The server returned ${res.status}.`);
+      }
+
       alert(`Report ${isUpdate ? 'updated' : 'saved'} successfully. Project ID: ${projectId}`);
       triggerRefresh();
       setEditingReportData(null);
@@ -248,7 +278,7 @@ export default function App() {
         Calculated Results: ${JSON.stringify(advancedResults)}
       `;
 
-      const response = await fetch(`${API_BASE_URL}/evaluate`, {
+      const response = await apiFetch('/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, targetLanguage: lang })
@@ -274,7 +304,7 @@ export default function App() {
     if (!advancedResults) return;
     setIsGeneratingInfographic(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/infographic`, {
+      const response = await apiFetch('/infographic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -354,8 +384,13 @@ export default function App() {
           setEditingReportData(null);
           setEditingReportId(null);
           setViewMode('form');
-        }} 
-        t={t} 
+        }}
+        t={t}
+        isSignedIn={isSignedIn}
+        isAdmin={isAdmin}
+        email={authEmail}
+        onSignIn={() => setShowSignIn(true)}
+        onSignOut={() => { void signOut(); setActiveTab('dashboard'); }}
       />
 
       <main className="flex-1 overflow-y-auto relative">
@@ -427,7 +462,18 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} onEditReport={openStoredReport} />}
+          {gate === 'loading' && (
+            <div className="max-w-md mx-auto mt-24 text-center text-[13px] font-bold text-[#4A6B6F]">
+              Checking your session…
+            </div>
+          )}
+
+          {gate === 'signin' && (
+            <SignIn onDismiss={() => { setShowSignIn(false); setActiveTab('dashboard'); }} />
+          )}
+
+          {gate === 'ok' && <>
+          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} onEditReport={openStoredReport} canDelete={isAdmin} isSignedIn={isSignedIn} onRequestSignIn={() => setShowSignIn(true)} />}
           {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={openStoredReport} />}
           {activeTab === 'analysis' && (
             <ProjectWorkspace
@@ -498,6 +544,7 @@ export default function App() {
               )}
             </div>
           )}
+          </>}
         </div>
       </main>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, AlertCircle } from 'lucide-react';
-import { API_BASE_URL } from '../../config/api';
+import { apiFetch } from '../../lib/auth';
 import { type Language, type ROIParams, type ROIResults } from '../../types';
 import { type ProjectInput } from '../../domain/model';
 import { type ChatMessage } from '../../hooks/useAppState';
@@ -55,7 +55,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/chat`, {
+      const response = await apiFetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

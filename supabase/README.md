@@ -25,18 +25,63 @@ disagrees with a fresh calculation, the calculation is right. They exist so the
 dashboard and history list can sort and filter without deserialising every
 project.
 
-## Row Level Security
+## Row Level Security and where authorization actually lives
 
-RLS is currently **disabled** on all tables. This is worth understanding before
-adding data, because the browser bundle carries a Supabase anon key
-(`src/lib/supabase.ts`, used for image upload) and `VITE_`-prefixed values are
-inlined into the published JavaScript by design. The anon key is meant to be
-public; RLS is what protects the data behind it.
+RLS is **enabled on every table with no table policies**, and that combination
+is deliberate rather than an oversight.
 
-Enabling RLS without policies blocks all access, so it needs policies written
-alongside it. The server uses `SUPABASE_SERVICE_ROLE_KEY`, which bypasses RLS,
-so the API keeps working once it is enabled — only the browser client's storage
-upload needs a policy.
+Nothing in the browser reads or writes these tables. There is no
+`supabase.from(...)` anywhere in `src/` — the frontend calls the Express API,
+which uses `SUPABASE_SERVICE_ROLE_KEY` and therefore bypasses RLS. So the API is
+the access control:
+
+| Route | Who |
+|---|---|
+| `GET /api/dashboard/analytics` | anyone — but `topStats` and `statusDistribution` only. The per-project series (`investmentVsSaving`, `roiDistribution`, `vendorInvestment`) name machines and vendors and are withheld unless signed in. |
+| `GET /api/whoami` | signed in |
+| reports: list, create, edit, status | signed in; editing and status changes need ownership, or admin |
+| `DELETE /api/roi-reports/:id` | admin only |
+| AI routes (`/evaluate`, `/chat`, `/infographic`) | signed in — they cost money per call |
+| `POST /api/upload` | signed in |
+
+Enabled-with-no-policies means the anon key published in the browser bundle
+(`src/lib/supabase.ts`, used for image upload — `VITE_`-prefixed values are
+inlined into the JavaScript by design) can read **nothing at all** from these
+tables. It is a backstop behind the API, not the mechanism.
+
+If you ever want the browser to query Supabase directly, that changes: you would
+need real policies first, because at that point RLS becomes the only thing
+standing between the published key and the data.
+
+## Roles
+
+Two roles, `admin` and `user`, held in `public.users.role` with a check
+constraint and a default of `'user'` — so a new signup can never arrive with
+privileges, whatever the request body says.
+
+`public.users.auth_user_id` links a row to its Supabase Auth identity. On first
+sign-in the API finds the row by `auth_user_id`, or adopts a row matching the
+email address (`users.email` is unique and the table predates authentication, so
+adoption avoids both a constraint violation and orphaning the reports the
+existing row owns), or creates one.
+
+**To make someone an administrator**, edit the table directly — there is no
+admin UI by design:
+
+```sql
+update public.users set role = 'admin' where email = 'you@laiyih.com';
+```
+
+The API re-reads the role on every request, so this takes effect on the next
+call rather than when a session expires.
+
+## Storage
+
+`report-images` is a public-read bucket. Uploading requires `authenticated`;
+reading does not, because stored reports and exported PDFs reference images by
+public URL and gating reads would break images in documents already issued.
+Filenames are random, which is obscurity rather than access control — worth
+knowing when deciding what may appear in a report photo.
 
 ## Not yet wired
 
