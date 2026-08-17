@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from '../../config/api';
-import { Language, ROIParams, ROIResults } from '../../types';
-import { ChatMessage } from '../../hooks/useAppState';
+import { type Language, type ROIParams, type ROIResults } from '../../types';
+import { type ProjectInput } from '../../domain/model';
+import { type ChatMessage } from '../../hooks/useAppState';
 
 interface AIChatbotProps {
   lang: Language;
   t: any;
   params: ROIParams;
   advancedResults: ROIResults | null;
+  /**
+   * The project on the rebuilt engine, when one is loaded. Sent in preference
+   * to the legacy pair: it is the model the reports are produced from, so an
+   * assistant answering from anything else would contradict them.
+   */
+  project?: ProjectInput | null;
   initialPrompt?: string;
   setAiPrompt?: (value: string) => void;
   messages: ChatMessage[];
@@ -21,7 +28,7 @@ const GREETING: ChatMessage = {
 };
 
 export const AIChatbot: React.FC<AIChatbotProps> = ({
-  lang, t, params, advancedResults, initialPrompt, setAiPrompt, messages, setMessages,
+  lang, t, params, advancedResults, project, initialPrompt, setAiPrompt, messages, setMessages,
 }) => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -53,7 +60,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: history,
-          contextData: { params, advancedResults },
+          contextData: { project: project ?? undefined, params, advancedResults },
           targetLanguage: lang,
         }),
       });

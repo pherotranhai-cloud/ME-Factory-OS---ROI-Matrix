@@ -1,7 +1,7 @@
-import { CostKey, ProjectInput, ProjectResult } from './model';
+import { type CostKey, type ProjectInput, type ProjectResult } from './model';
 import { calculateProject } from './engine';
 import { fromLegacyParams, isLegacyShaped, newProjectDefaults } from './adapt';
-import { ROIParams } from '../types';
+import { type ROIParams } from '../types';
 
 /**
  * Storage for the rebuilt analysis path.

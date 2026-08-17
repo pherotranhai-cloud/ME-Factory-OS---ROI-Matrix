@@ -3,8 +3,8 @@ import { toStored, loadProject, summarise, isProjectShaped, PROJECT_SCHEMA } fro
 import { calculateProject } from './engine';
 import { emma21Project, emma21Expected as X } from './fixtures/emma21';
 import { newProjectDefaults } from './adapt';
-import { ProjectInput } from './model';
-import { ROIParams } from '../types';
+import { type ProjectInput } from './model';
+import { type ROIParams } from '../types';
 import { INITIAL_PARAMS } from '../hooks/useAppState';
 
 /** A stored row in the old shape, as `form_data` actually holds it. */

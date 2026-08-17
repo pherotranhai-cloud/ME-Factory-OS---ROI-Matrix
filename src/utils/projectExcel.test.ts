@@ -5,7 +5,7 @@ import { buildProjectWorkbook } from './projectExcel';
 import { calculateProject } from '../domain/engine';
 import { emma21Project, emma21Expected as X } from '../domain/fixtures/emma21';
 import { newProjectDefaults } from '../domain/adapt';
-import { ProjectInput } from '../domain/model';
+import { type ProjectInput } from '../domain/model';
 
 const roundTrip = async (input: ProjectInput, options = {}) => {
   const wb = await buildProjectWorkbook(input, options);

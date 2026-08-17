@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateAdvancedROI, resolveAssumptions, bomCostPerPair } from './roi-calculations';
-import { ROIParams, MaterialItem } from '../types';
+import { type ROIParams, type MaterialItem } from '../types';
 
 const material = (over: Partial<MaterialItem> = {}): MaterialItem => ({
   id: 'm1',

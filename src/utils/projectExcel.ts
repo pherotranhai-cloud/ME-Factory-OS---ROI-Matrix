@@ -1,8 +1,8 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { ProjectInput, ProjectResult } from '../domain/model';
+import { type ProjectInput, type ProjectResult } from '../domain/model';
 import { calculateProject } from '../domain/engine';
-import { validateProject, Issue } from '../domain/validate';
+import { validateProject, type Issue } from '../domain/validate';
 import { allScenarios } from '../domain/scenarios';
 
 /**

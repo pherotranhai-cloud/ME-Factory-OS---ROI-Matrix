@@ -1,6 +1,6 @@
-import { ROIParams, MaterialItem } from '../types';
+import { type ROIParams, type MaterialItem } from '../types';
 import { resolveAssumptions, bomCostPerPair } from '../utils/roi-calculations';
-import { ProjectInput, SideInput, MachineSpec } from './model';
+import { type ProjectInput, type SideInput, type MachineSpec } from './model';
 
 /**
  * Bridge from the stored `ROIParams` shape to the new domain model.
@@ -136,6 +136,20 @@ export const fromLegacyParams = (p: ROIParams): ProjectInput => {
     proposed,
   };
 };
+
+/**
+ * Whether anything has actually been entered.
+ *
+ * A blank project computes cleanly — every figure is zero — which makes it
+ * indistinguishable from a real analysis to anything reading only the output.
+ * Callers that would otherwise present or reason about those zeroes as findings
+ * use this to tell "not filled in" from "genuinely nothing to save".
+ */
+export const isProjectStarted = (p: ProjectInput): boolean =>
+  p.demandPairsPerYear > 0
+  || p.baseline.machine.machineCycleSec > 0
+  || p.proposed.machine.machineCycleSec > 0
+  || p.proposed.machine.unitPrice > 0;
 
 /** Marks a project as imported from the old shape, for the UI to flag. */
 export const isLegacyShaped = (p: Partial<ROIParams>): boolean =>

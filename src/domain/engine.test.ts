@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateProject, computeSchedule, computeFleet } from './engine';
 import { emma21Project, emma21ActualShifts, emma21Expected as X } from './fixtures/emma21';
-import { ProjectInput } from './model';
+import { type ProjectInput } from './model';
 
 const lineOf = (r: ReturnType<typeof calculateProject>, side: 'baseline' | 'proposed', key: string) =>
   r[side].lines.find((l) => l.key === key)!.annual.value;

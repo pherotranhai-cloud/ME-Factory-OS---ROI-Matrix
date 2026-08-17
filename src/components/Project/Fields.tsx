@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, XCircle, Info } from 'lucide-react';
-import { Issue } from '../../domain/validate';
+import { type Issue } from '../../domain/validate';
 
 /**
  * Form primitives for the project editor.

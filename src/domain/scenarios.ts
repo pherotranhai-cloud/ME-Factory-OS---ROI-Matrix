@@ -1,5 +1,5 @@
-import { ProjectInput, ProjectResult } from './model';
-import { calculateProject } from './engine';
+import { type ProjectInput, type ProjectResult } from './model.ts';
+import { calculateProject } from './engine.ts';
 
 /**
  * Scenario analysis.

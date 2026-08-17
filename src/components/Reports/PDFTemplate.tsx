@@ -3,7 +3,7 @@ import { Cpu, ImageIcon, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import html2pdf from 'html2pdf.js';
-import { Language, ROIParams, ROIResults, MaterialItem } from '../../types';
+import { type Language, type ROIParams, type ROIResults, type MaterialItem } from '../../types';
 import { VERDICT_TRANSLATIONS } from '../../constants/translations';
 import { CostBridge } from './CostBridge';
 import { AssumptionsPanel, SensitivityPanel } from './Assumptions';

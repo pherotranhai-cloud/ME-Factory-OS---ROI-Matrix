@@ -1,4 +1,4 @@
-import { ROIParams, ROIResults } from '../types';
+import { type ROIParams, type ROIResults } from '../types';
 import { calculateAdvancedROI } from './roi-calculations';
 
 /**

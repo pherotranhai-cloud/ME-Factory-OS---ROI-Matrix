@@ -1,10 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import html2pdf from 'html2pdf.js';
-import { ProjectInput, ProjectResult } from '../domain/model';
+import { type ProjectInput, type ProjectResult } from '../domain/model';
 import { calculateProject } from '../domain/engine';
 import { validateProject } from '../domain/validate';
-import { Issue } from '../domain/validate';
+import { type Issue } from '../domain/validate';
 import { ProjectReport } from '../components/Project/ProjectReport';
 
 /**

@@ -1,11 +1,11 @@
 import {
-  ROIParams,
-  ROIResults,
-  ScenarioResults,
-  SavingsComponent,
-  Payback,
-  MaterialItem,
-  SideSchedule,
+  type ROIParams,
+  type ROIResults,
+  type ScenarioResults,
+  type SavingsComponent,
+  type Payback,
+  type MaterialItem,
+  type SideSchedule,
   DEFAULT_ASSUMPTIONS,
 } from '../types';
 

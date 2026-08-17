@@ -7,6 +7,7 @@ import {
   resolveLanguage,
   VERDICTS,
 } from './prompts';
+import { emma21Project, emma21Expected as X } from '../domain/fixtures/emma21';
 
 /**
  * P2-06 — the chat route used to run `SELECT *` and stringify whole rows into
@@ -74,6 +75,78 @@ describe('context projection', () => {
   it('handles a missing project', () => {
     expect(projectContext(null)).toBe('No project loaded.');
     expect(projectContext(undefined)).toBe('No project loaded.');
+  });
+});
+
+/**
+ * The assistant has to answer from the same model the reports are produced
+ * from. Reasoning off the legacy payload while the workspace holds a rebuilt
+ * project is how an assistant ends up contradicting the PDF beside it.
+ */
+describe('context projection on the rebuilt engine', () => {
+  it('reports the figures the engine produces, not a client-supplied result', () => {
+    const out = projectContext({ project: emma21Project });
+    const parsed = JSON.parse(out);
+
+    expect(parsed.paybackMonths).toBeCloseTo(X.paybackMonths, 4);
+    expect(parsed.netAnnualSaving).toBeCloseTo(X.netAnnualSaving, 2);
+    expect(parsed.incrementalCapital).toBeCloseTo(X.capex.incremental, 2);
+    expect(parsed.baseline.unitsRequired).toBe(X.fleet.presses);
+    expect(parsed.proposed.unitsRequired).toBe(X.fleet.emma);
+  });
+
+  it('keeps machine and labour cycle time distinct', () => {
+    const p = JSON.parse(projectContext({ project: emma21Project }));
+    // Conflating these is what produced a 27x labour overstatement before.
+    expect(p.proposed.machineCycleSec).toBeLessThan(p.proposed.labourCycleSec);
+    expect(p.proposed.machineCycleSec).toBeCloseTo(37.002, 2);
+    expect(p.proposed.labourCycleSec).toBeCloseTo(115.993, 2);
+  });
+
+  it('carries the basis settings that decide what the figures mean', () => {
+    const p = JSON.parse(projectContext({ project: emma21Project }));
+    expect(p.basis.cost).toBe('cash');
+    expect(p.basis.labour).toBe('cycleTime');
+    expect(p.basis.labourConversionFactor).toBe(1);
+    expect(p.basis.horizonYears).toBe(3);
+  });
+
+  it('carries the open validation findings alongside the numbers', () => {
+    const p = JSON.parse(projectContext({ project: emma21Project }));
+    expect(p.openFindings.length).toBeGreaterThan(0);
+    expect(JSON.stringify(p.openFindings)).toContain('100% of the theoretical labour saving');
+  });
+
+  it('prefers the rebuilt project over a stale legacy payload beside it', () => {
+    const out = projectContext({
+      project: emma21Project,
+      params: { equipmentName: 'Something else entirely' },
+      advancedResults: { savings: { totalAnnualSaving: 999_999 } },
+    });
+    expect(out).not.toContain('Something else entirely');
+    expect(out).not.toContain('999999');
+  });
+
+  it('falls back to the legacy payload when no rebuilt project is present', () => {
+    const out = projectContext({
+      project: undefined,
+      params: { equipmentName: 'Cell A' },
+      advancedResults: { savings: { totalAnnualSaving: 1000 } },
+    });
+    expect(out).toContain('Cell A');
+  });
+
+  it.each([
+    ['a half-built object', { project: { demandPairsPerYear: 5 } }],
+    ['a string', { project: 'not a project' }],
+    ['null', { project: null }],
+  ])('does not mistake %s for a rebuilt project', (_name, payload) => {
+    const out = projectContext({ ...payload, params: { equipmentName: 'Cell A' } });
+    expect(out).toContain('Cell A');
+  });
+
+  it('stays inside the context budget', () => {
+    expect(projectContext({ project: emma21Project }).length).toBeLessThanOrEqual(6_100);
   });
 });
 

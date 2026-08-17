@@ -1,6 +1,6 @@
 import React from 'react';
-import { ProjectInput, SideInput } from '../../domain/model';
-import { Issue } from '../../domain/validate';
+import { type ProjectInput, type SideInput } from '../../domain/model';
+import { type Issue } from '../../domain/validate';
 import { calculateProject } from '../../domain/engine';
 import { Field, Toggle, Section, IssueBanner, issuesFor } from './Fields';
 

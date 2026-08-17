@@ -1,5 +1,5 @@
 import React from 'react';
-import { ROIResults, SavingsComponent } from '../../types';
+import { type ROIResults, type SavingsComponent } from '../../types';
 
 const LABELS: Record<SavingsComponent['key'], string> = {
   labor: 'Labour',

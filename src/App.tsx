@@ -18,10 +18,10 @@ import { exportProjectToPdf } from './utils/projectPdf';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { API_BASE_URL } from './config/api';
-import { ROIResults } from './types';
+import { type ROIResults } from './types';
 import { ProjectWorkspace } from './components/Project/ProjectWorkspace';
-import { ProjectInput } from './domain/model';
-import { newProjectDefaults } from './domain/adapt';
+import { type ProjectInput } from './domain/model';
+import { newProjectDefaults, isProjectStarted } from './domain/adapt';
 import { loadProject, summarise } from './domain/persist';
 
 function cn(...inputs: ClassValue[]) {
@@ -448,7 +448,7 @@ export default function App() {
               isSaving={isSaving}
             />
           )}
-          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
+          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} project={isProjectStarted(project) ? project : null} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
           {activeTab === 'roi' && (
             <div className="max-w-5xl mx-auto">
               {viewMode === 'form' ? (

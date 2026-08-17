@@ -28,6 +28,11 @@
       ]
     },
     "allowImportingTsExtensions": true,
+    // Production runs `ts-node server.ts` under Node's type-stripping, which
+    // erases annotations without resolving them: a type imported as a value
+    // leaves a runtime import for an export that does not exist, and the server
+    // dies on boot. This makes the compiler reject that at build time instead.
+    "verbatimModuleSyntax": true,
     "noEmit": true
   },
   "include": [

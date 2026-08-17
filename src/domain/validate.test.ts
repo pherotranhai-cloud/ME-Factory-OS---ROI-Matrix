@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateProject, hasBlockingErrors } from './validate';
 import { emma21Project, emma21ActualShifts } from './fixtures/emma21';
-import { ProjectInput } from './model';
+import { type ProjectInput } from './model';
 
 const codes = (input: ProjectInput) => validateProject(input).map((i) => i.code);
 const find = (input: ProjectInput, code: string) => validateProject(input).find((i) => i.code === code);

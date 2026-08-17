@@ -1,8 +1,8 @@
 import React from 'react';
 import { AlertTriangle, XCircle, ChevronRight } from 'lucide-react';
-import { ProjectResult } from '../../domain/model';
-import { Issue } from '../../domain/validate';
-import { allScenarios, dominantScenario, materialBreakEven, ScenarioTable } from '../../domain/scenarios';
+import { type ProjectResult } from '../../domain/model';
+import { type Issue } from '../../domain/validate';
+import { allScenarios, dominantScenario, materialBreakEven, type ScenarioTable } from '../../domain/scenarios';
 
 /**
  * The report.

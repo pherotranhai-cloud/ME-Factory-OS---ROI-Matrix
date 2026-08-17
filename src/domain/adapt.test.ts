@@ -3,7 +3,7 @@ import { fromLegacyParams, newProjectDefaults, isLegacyShaped } from './adapt';
 import { calculateProject } from './engine';
 import { validateProject } from './validate';
 import { calculateAdvancedROI } from '../utils/roi-calculations';
-import { ROIParams, MaterialItem } from '../types';
+import { type ROIParams, type MaterialItem } from '../types';
 
 const material = (over: Partial<MaterialItem> = {}): MaterialItem => ({
   id: 'm1', type: 'Upper', description: 'Mesh', supplier: 'S', uom: 'pr',

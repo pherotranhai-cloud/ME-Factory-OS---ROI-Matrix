@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileSpreadsheet, ClipboardList, BarChart3, RotateCcw, Save, AlertTriangle, FileText } from 'lucide-react';
-import { ProjectInput } from '../../domain/model';
+import { type ProjectInput } from '../../domain/model';
 import { calculateProject } from '../../domain/engine';
 import { validateProject, hasBlockingErrors } from '../../domain/validate';
 import { newProjectDefaults } from '../../domain/adapt';

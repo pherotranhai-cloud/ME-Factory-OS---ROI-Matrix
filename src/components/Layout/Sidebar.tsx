@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, FilePlus, Cpu, Languages, History, MessageSquare, Calculator } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Language } from '../../types';
+import { type Language } from '../../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

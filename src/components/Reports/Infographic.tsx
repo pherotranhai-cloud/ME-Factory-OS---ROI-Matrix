@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, Users, Zap, CheckCircle2 } from 'lucide-react';
 
-import { ROIParams, ROIResults } from '../../types';
+import { type ROIParams, type ROIResults } from '../../types';
 
 interface InfographicProps {
   data: {

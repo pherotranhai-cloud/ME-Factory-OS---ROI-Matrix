@@ -1,4 +1,4 @@
-import { ProjectInput, SideInput } from '../model';
+import { type ProjectInput, type SideInput } from '../model';
 
 /**
  * The EMMA 21 leather-cutting case, transcribed from the IE financial model

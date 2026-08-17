@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Language } from '../../types';
+import { type Language } from '../../types';
 import { CAPEXReportTemplate, generatePDF } from '../Reports/PDFTemplate';
 import { TRANSLATIONS } from '../../constants/translations';
 import { calculateAdvancedROI } from '../../hooks/useAppState';

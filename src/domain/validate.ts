@@ -1,5 +1,5 @@
-import { ProjectInput, ProjectResult, SideInput } from './model';
-import { calculateProject } from './engine';
+import { type ProjectInput, type ProjectResult, type SideInput } from './model.ts';
+import { calculateProject } from './engine.ts';
 
 /**
  * Input validation.

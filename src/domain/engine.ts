@@ -1,17 +1,17 @@
 import {
-  ProjectInput,
-  ProjectResult,
-  SideInput,
-  SideResult,
-  SideSchedule,
-  SideFleet,
-  CostLine,
-  CostKey,
-  SavingLine,
-  Payback,
-  Traced,
+  type ProjectInput,
+  type ProjectResult,
+  type SideInput,
+  type SideResult,
+  type SideSchedule,
+  type SideFleet,
+  type CostLine,
+  type CostKey,
+  type SavingLine,
+  type Payback,
+  type Traced,
   traced,
-} from './model';
+} from './model.ts';
 
 /* ------------------------------------------------------------------ *
  * Numeric helpers
