@@ -1,6 +1,6 @@
 import React from 'react';
-import { ROIParams, ROIResults } from '../../types';
-import { SensitivityRow, dominantDriver } from '../../utils/sensitivity';
+import { type ROIParams, type ROIResults } from '../../types';
+import { type SensitivityRow, dominantDriver } from '../../utils/sensitivity';
 
 const fmtMonths = (m: number | null) =>
   m === null ? 'None' : m === 0 ? 'Now' : `${m.toFixed(1)}`;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildSensitivity, dominantDriver } from './sensitivity';
 import { calculateAdvancedROI } from './roi-calculations';
-import { ROIParams } from '../types';
+import { type ROIParams } from '../types';
 
 const params = (over: Partial<ROIParams> = {}): ROIParams => ({
   shoeModel: 'S', date: '2026-01-01', equipmentName: 'E', machineType: 'M', brand: 'B', scopeOfWork: 'W',

@@ -66,3 +66,29 @@ jobs:
           cat /tmp/server.log
           kill $pid 2>/dev/null || true
           exit 1
+
+      # The build above produces dist/server.cjs and nothing ever runs it, so a
+      # bundle that compiles but cannot boot — a dependency esbuild externalised
+      # that is missing at runtime, say — passes every other check. `npm start`
+      # is that bundle, so boot it too.
+      - name: Bundled server boots under npm start
+        run: |
+          PORT=5051 npm start > /tmp/bundle.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 20); do
+            if curl -sf -o /dev/null http://localhost:5051/; then
+              echo "Bundle responded on attempt $i"
+              kill $pid 2>/dev/null || true
+              exit 0
+            fi
+            if ! kill -0 $pid 2>/dev/null; then
+              echo "::error::Bundled server exited before binding a port"
+              cat /tmp/bundle.log
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::Bundled server did not respond within 40s"
+          cat /tmp/bundle.log
+          kill $pid 2>/dev/null || true
+          exit 1

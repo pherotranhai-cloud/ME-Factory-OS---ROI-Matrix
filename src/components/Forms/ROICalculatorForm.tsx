@@ -3,7 +3,7 @@ import { Upload, X, Sparkles, Plus, Trash2, Download, FileSpreadsheet, Image as 
 import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ROIParams, MaterialItem, DEFAULT_ASSUMPTIONS } from '../../types';
+import { type ROIParams, type MaterialItem, DEFAULT_ASSUMPTIONS } from '../../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

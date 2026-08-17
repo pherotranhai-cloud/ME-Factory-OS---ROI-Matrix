@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { ROIParams, ROIResults, MaterialItem } from '../types';
+import { type ROIParams, type ROIResults, type MaterialItem } from '../types';
 
 /* ------------------------------------------------------------------ *
  * Styling helpers

@@ -13,10 +13,16 @@ import { TRANSLATIONS } from './constants/translations';
 import html2canvas from 'html2canvas';
 
 import { exportToExcel } from './utils/excelExport';
+import { exportProjectToExcel } from './utils/projectExcel';
+import { exportProjectToPdf } from './utils/projectPdf';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { API_BASE_URL } from './config/api';
-import { ROIResults } from './types';
+import { type ROIResults } from './types';
+import { ProjectWorkspace } from './components/Project/ProjectWorkspace';
+import { type ProjectInput } from './domain/model';
+import { newProjectDefaults, isProjectStarted } from './domain/adapt';
+import { loadProject, summarise } from './domain/persist';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -53,6 +59,12 @@ export default function App() {
   } = useAppState();
 
   const [editingReportData, setEditingReportData] = React.useState<any>(null);
+  // The rebuilt analysis path. Kept beside the legacy calculator rather than
+  // replacing it, so stored projects keep opening while the new model beds in.
+  const [project, setProject] = React.useState<ProjectInput>(() => newProjectDefaults());
+  // Set when the open project came from a legacy row, so the workspace can say
+  // that its figures are a restatement rather than the ones that were approved.
+  const [projectWasImported, setProjectWasImported] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'form' | 'preview'>('form');
   const [aiPrompt, setAiPrompt] = React.useState('');
   const [isGeneratingInfographic, setIsGeneratingInfographic] = React.useState(false);
@@ -76,6 +88,102 @@ export default function App() {
     }
   };
 
+  /**
+   * The rebuilt path exports from the engine trace, so the workbook and the
+   * on-screen report are two renderings of one calculation rather than two
+   * transcriptions of it.
+   */
+  const handleExportProject = async (input: ProjectInput) => {
+    try {
+      await exportProjectToExcel(input, { images: uploadedImages ?? [] });
+    } catch (err: any) {
+      console.error(err);
+      alert('Excel export failed: ' + err.message);
+    }
+  };
+
+  const handleExportProjectPdf = async (input: ProjectInput) => {
+    try {
+      await exportProjectToPdf(input);
+    } catch (err: any) {
+      console.error(err);
+      alert('PDF export failed: ' + err.message);
+    }
+  };
+
+  /**
+   * Save the rebuilt analysis. The flat columns the dashboard reads are derived
+   * from the same engine run that produced the on-screen report, and the input
+   * itself goes into `form_data` — so what reopens is what was entered, and the
+   * figures are recomputed rather than trusted from storage.
+   */
+  const handleSaveProject = async (input: ProjectInput) => {
+    setIsSaving(true);
+    try {
+      const isUpdate = !!editingReportData?.id;
+      const url = isUpdate ? `${API_BASE_URL}/roi-reports/${editingReportData.id}` : `${API_BASE_URL}/roi-reports`;
+      const projectId = editingReportData?.project_id
+        || `CAPEX-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const summary = summarise(input);
+
+      const res = await fetch(url, {
+        method: isUpdate ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...summary,
+          project_id: projectId,
+          vendor: '',
+          ai_verdict: 'Draft',
+          ai_evaluation: null,
+          status: 'Draft',
+          tags: ['ROI', 'Rebuilt', input.article].filter(Boolean),
+          image_url: uploadedImages ?? [],
+        }),
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+      // Saved once, then edited in place — otherwise a second Save would create
+      // a duplicate row rather than update the one just written.
+      if (!isUpdate) {
+        const saved = await res.json().catch(() => null);
+        if (saved?.id) setEditingReportData({ id: saved.id, project_id: projectId });
+      }
+      setProjectWasImported(false);
+      triggerRefresh();
+      alert(`Project ${isUpdate ? 'updated' : 'saved'}. Project ID: ${projectId}`);
+    } catch (err: any) {
+      console.error(err);
+      alert('Save failed: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /**
+   * Open a stored row. Rows written by the rebuilt workspace reopen there; older
+   * rows open in the legacy calculator and are also adapted into the workspace
+   * so they can be reviewed under the corrected model.
+   */
+  const openStoredReport = (report: any) => {
+    setEditingReportData(report);
+    setProjectName(report.machine_name || 'ROI Project');
+    setAiEvaluation(report.ai_evaluation);
+    setUploadedImages(report.image_url);
+    setEditingReportId(report.id);
+
+    const { input, wasImported } = loadProject(report.form_data);
+    setProject(input);
+    setProjectWasImported(wasImported);
+
+    if (wasImported) {
+      setParams(report.form_data);
+      setViewMode('form');
+      setActiveTab('roi');
+    } else {
+      setActiveTab('analysis');
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -95,7 +203,11 @@ export default function App() {
           // P1-02: this was `params.unitPrice`, a property that does not exist on
           // ROIParams — it saved `undefined` and left roi_percentage as NaN.
           investment_cost: advancedResults?.investment.gross ?? 0,
-          investment_cost_net: advancedResults?.investment.net ?? 0,
+          // Net investment is deliberately not sent: the server's insert
+          // whitelists its columns and never read this field, so it was a dead
+          // write that read as though net were persisted. Net is recoverable by
+          // recomputing from `form_data`, which is stored in full. Persisting it
+          // as its own column needs that column to exist first.
           labor_saving_cost: advancedResults?.savings.laborSaving,
           energy_saving_cost: advancedResults?.savings.energySaving,
           other_savings: (advancedResults?.savings.materialSaving || 0) + (advancedResults?.savings.maintenanceSaving || 0) + (advancedResults?.savings.consumablesSaving || 0),
@@ -315,27 +427,28 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} onEditReport={(report: any) => {
-            setEditingReportData(report);
-            setProjectName(report.machine_name || 'ROI Project');
-            setParams(report.form_data);
-            setAiEvaluation(report.ai_evaluation);
-            setUploadedImages(report.image_url);
-            setEditingReportId(report.id);
-            setViewMode('form');
-            setActiveTab('roi');
-          }} />}
-          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={(report: any) => { 
-            setEditingReportData(report); 
-            setProjectName(report.machine_name || 'ROI Project');
-            setParams(report.form_data);
-            setAiEvaluation(report.ai_evaluation);
-            setUploadedImages(report.image_url);
-            setEditingReportId(report.id);
-            setViewMode('form');
-            setActiveTab('roi'); 
-          }} />}
-          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
+          {activeTab === 'dashboard' && <Dashboard lang={lang} t={t} refreshTrigger={refreshTrigger} onEditReport={openStoredReport} />}
+          {activeTab === 'history' && <ReportHistory lang={lang} t={t} setActiveTab={setActiveTab} refreshTrigger={refreshTrigger} onEditReport={openStoredReport} />}
+          {activeTab === 'analysis' && (
+            <ProjectWorkspace
+              value={project}
+              onChange={(next, opts) => {
+                setProject(next);
+                if (opts?.replaced) {
+                  setProjectWasImported(false);
+                  // A different project must not update the row the last one
+                  // came from, so the edit target is released with it.
+                  setEditingReportData(null);
+                }
+              }}
+              onExport={handleExportProject}
+              onExportPdf={handleExportProjectPdf}
+              onSave={handleSaveProject}
+              wasImported={projectWasImported}
+              isSaving={isSaving}
+            />
+          )}
+          {activeTab === 'ai' && <AIChatbot lang={lang} t={t} params={params} advancedResults={advancedResults} project={isProjectStarted(project) ? project : null} initialPrompt={aiPrompt} setAiPrompt={setAiPrompt} messages={chatMessages} setMessages={setChatMessages} />}
           {activeTab === 'roi' && (
             <div className="max-w-5xl mx-auto">
               {viewMode === 'form' ? (

@@ -35,7 +35,12 @@ export const Header = ({ activeTab, t, viewMode, setViewMode, advancedResults, i
       <div className="flex items-center gap-6">
         {activeTab !== 'roi' && (
           <h1 className="text-base font-black uppercase tracking-widest text-[#002D32]">
-            {t.dashboard || 'DASHBOARD'}
+            {/* Was hardcoded to "Dashboard" for every tab that is not the
+                calculator, so the title contradicted the sidebar. */}
+            {activeTab === 'analysis' ? (t.analysis || 'Analysis')
+              : activeTab === 'history' ? (t.history || 'History Logs')
+              : activeTab === 'ai' ? (t.aiAssistant || 'AI Assistant')
+              : (t.dashboard || 'Dashboard')}
           </h1>
         )}
         

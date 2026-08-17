@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ROIParams, ROIResults, Language } from '../types';
+import { type ROIParams, type ROIResults, type Language } from '../types';
 import { calculateAdvancedROI } from '../utils/roi-calculations';
 export { calculateAdvancedROI };
 

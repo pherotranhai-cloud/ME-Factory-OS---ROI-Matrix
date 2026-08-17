@@ -1,5 +1,10 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
+// Explicit extensions: production runs `ts-node server.ts` directly, where an
+// extensionless relative import fails to resolve at runtime.
+import { type ProjectInput, type SideInput, type SideResult } from '../domain/model.ts';
+import { calculateProject } from '../domain/engine.ts';
+import { validateProject } from '../domain/validate.ts';
 
 /**
  * Shared plumbing for every AI route: bounded calls, schema-validated output,
@@ -160,6 +165,26 @@ const MAX_CONTEXT_CHARS = 6_000;
 
 const truncate = (s: string, max: number) => (s.length > max ? `${s.slice(0, max)}\n…(truncated)` : s);
 
+const round = (n: number, d = 2): number =>
+  Number.isFinite(n) ? Number(n.toFixed(d)) : 0;
+
+/**
+ * Structural check, not a schema parse. The payload arrives from our own client,
+ * and `calculateProject` already coerces every non-finite value — so the only
+ * question worth asking is which of the two shapes this is.
+ */
+const isProjectInput = (v: unknown): v is ProjectInput => {
+  if (!v || typeof v !== 'object') return false;
+  const o = v as Partial<ProjectInput>;
+  return (
+    typeof o.demandPairsPerYear === 'number'
+    && !!o.baseline && typeof o.baseline === 'object'
+    && !!o.proposed && typeof o.proposed === 'object'
+    && !!o.labour && typeof o.labour === 'object'
+    && !!o.calendar && typeof o.calendar === 'object'
+  );
+};
+
 /**
  * Project stored reports down to a whitelist before they reach a prompt.
  *
@@ -182,10 +207,80 @@ export const projectHistory = (rows: unknown[]): string => {
   return truncate(JSON.stringify(compact, null, 1), MAX_CONTEXT_CHARS);
 };
 
+/**
+ * Context for a project on the rebuilt engine.
+ *
+ * Recomputed here from the input rather than read off a client-supplied result:
+ * the engine is pure, so the same input gives the same figures, and the model
+ * can never be handed a result that disagrees with the inputs beside it.
+ *
+ * The validation findings travel with the numbers deliberately. A payback of
+ * 15.8 months means something different when the case banks 100% of a
+ * theoretical labour saving, and an assistant that reports the figure without
+ * the caveat is worse than one that says nothing.
+ */
+const rebuiltContext = (input: ProjectInput): string => {
+  const r = calculateProject(input);
+  const issues = validateProject(input);
+
+  const side = (s: SideResult, i: SideInput) => ({
+    label: s.label,
+    unitsRequired: s.fleet.units.value,
+    // Kept distinct on purpose: conflating the two is what produced a 27x
+    // labour overstatement in the model this engine replaced.
+    machineCycleSec: i.machine.machineCycleSec,
+    labourCycleSec: i.machine.labourCycleSec,
+    shift: `${i.shift.shiftsPerDay} x ${i.shift.hoursPerShift}h`,
+    operatorsImplied: round(s.operators.value, 1),
+    annualCost: round(s.totalAnnual.value),
+    costPerPair: round(s.costPerPair.value, 4),
+    capital: round(s.capex.value),
+  });
+
+  const summary = {
+    project: input.projectName,
+    article: input.article,
+    annualDemandPairs: input.demandPairsPerYear,
+    // These decide what every figure below means, so they lead.
+    basis: {
+      cost: input.costBasis,
+      labour: input.labour.basis,
+      labourConversionFactor: input.labour.conversionFactor,
+      horizonYears: input.horizonYears,
+      lineEfficiency: input.calendar.lineEfficiency,
+      downtimeAllowance: input.calendar.downtimeAllowance,
+    },
+    baseline: side(r.baseline, input.baseline),
+    proposed: side(r.proposed, input.proposed),
+    savingByLine: r.savings.lines.map((l) => ({
+      line: l.label,
+      annualDelta: round(l.annualDelta),
+      shareOfTotal: round(l.share, 4),
+    })),
+    netAnnualSaving: round(r.savings.totalAnnual.value),
+    savingPerPair: round(r.savings.perPair.value, 4),
+    incrementalCapital: round(r.investment.incremental.value),
+    paybackMonths: r.paybackMonths,
+    horizonNetBenefit: round(r.horizonNetBenefit.value),
+    horizonROI: round(r.horizonROI.value, 4),
+    openFindings: issues.map((i) => ({ severity: i.severity, message: i.message })),
+  };
+
+  return truncate(JSON.stringify(summary, null, 1), MAX_CONTEXT_CHARS);
+};
+
 /** Project the live form/result payload down to what the model actually needs. */
 export const projectContext = (contextData: unknown): string => {
   if (!contextData || typeof contextData !== 'object') return 'No project loaded.';
-  const c = contextData as { params?: Record<string, unknown>; advancedResults?: Record<string, unknown> };
+  const c = contextData as {
+    project?: unknown;
+    params?: Record<string, unknown>;
+    advancedResults?: Record<string, unknown>;
+  };
+
+  // A project on the rebuilt engine takes precedence: it is the model the
+  // reports are produced from, and the legacy payload beside it may be stale.
+  if (isProjectInput(c.project)) return rebuiltContext(c.project);
 
   const p = c.params ?? {};
   const r = c.advancedResults as

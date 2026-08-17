@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { buildWorkbook } from './excelExport';
 import { calculateAdvancedROI } from './roi-calculations';
-import { ROIParams, MaterialItem } from '../types';
+import { type ROIParams, type MaterialItem } from '../types';
 
 const material = (over: Partial<MaterialItem> = {}): MaterialItem => ({
   id: 'm1', type: 'Upper', description: 'Mesh', supplier: 'S', uom: 'pr',
