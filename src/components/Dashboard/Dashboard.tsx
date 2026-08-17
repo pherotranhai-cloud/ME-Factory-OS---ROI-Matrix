@@ -27,7 +27,7 @@ import { CAPEXReportTemplate, generatePDF } from '../Reports/PDFTemplate';
 import { TRANSLATIONS } from '../../constants/translations';
 import { calculateAdvancedROI } from '../../hooks/useAppState';
 
-import { API_BASE_URL } from '../../config/api';
+import { apiFetch } from '../../lib/auth';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -78,12 +78,13 @@ export const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { re
 
   const handleUpdate = async (newStatus: string) => {
     try {
-      await fetch(`${API_BASE_URL}/roi-reports/${reportId}/status`, {
+      await apiFetch(`/roi-reports/${reportId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        // `changed_by` is not sent: the server records the authenticated caller,
+        // so a client-supplied name would only be a second, unverifiable story.
+        body: JSON.stringify({
           status: newStatus,
-          changed_by: 'Admin User',
           comment: `Status changed from ${currentStatus} to ${newStatus}`
         })
       });
@@ -120,7 +121,18 @@ export const StatusChangeDropdown = ({ reportId, currentStatus, onUpdate }: { re
   );
 };
 
-export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Language, t: any, refreshTrigger: number, onEditReport: (report: any) => void }) => {
+export const Dashboard = ({
+  lang, t, refreshTrigger, onEditReport, canDelete = false, isSignedIn = false, onRequestSignIn,
+}: {
+  lang: Language;
+  t: any;
+  refreshTrigger: number;
+  onEditReport: (report: any) => void;
+  /** Only an administrator may delete, so only they are offered the control. */
+  canDelete?: boolean;
+  isSignedIn?: boolean;
+  onRequestSignIn?: () => void;
+}) => {
   const [stats, setStats] = useState<any>({});
   const [history, setHistory] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -134,9 +146,9 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
     setIsLoading(true);
     try {
       const [statsRes, historyRes, reportsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/dashboard/analytics`).catch(() => null),
-        fetch(`${API_BASE_URL}/report-history`).catch(() => null),
-        fetch(`${API_BASE_URL}/roi-reports`).catch(() => null)
+        apiFetch('/dashboard/analytics').catch(() => null),
+        apiFetch('/report-history').catch(() => null),
+        apiFetch('/roi-reports').catch(() => null)
       ]);
 
       const safeJson = async (res: Response | null, fallback: any) => {
@@ -167,7 +179,7 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/roi-reports/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/roi-reports/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchDashboardData();
         setDeleteConfirm(null);
@@ -252,6 +264,32 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
         ))}
       </div>
 
+      {/* Everything below is attributable to individual projects — machine names,
+          vendors, per-project payback — so it is withheld from an anonymous
+          visitor. The API withholds the same series regardless of what this
+          component renders; this branch only avoids drawing empty panels and
+          leaving the reader wondering why they are blank. */}
+      {!isSignedIn ? (
+        <div className="glass-card rounded-[20px] p-10 text-center">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-[#002D32] mb-2">
+            Project detail requires sign-in
+          </h3>
+          <p className="mx-auto max-w-md text-[13px] leading-relaxed text-[#4A6B6F]">
+            The totals above are open to everyone. Individual proposals — the machines,
+            vendors and payback behind them — are visible once you sign in.
+          </p>
+          {onRequestSignIn && (
+            <button
+              type="button"
+              onClick={onRequestSignIn}
+              className="mt-5 rounded-xl bg-[#006D77] px-5 py-2.5 text-[12px] font-bold text-white transition-colors hover:bg-[#005259]"
+            >
+              Sign in
+            </button>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Main Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
@@ -454,9 +492,13 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
                           </button>
                         </div>
                       ) : (
-                        <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                          <Trash2 size={16} />
-                        </button>
+                        // Deleting is admin-only on the server, so offering the
+                        // control to anyone else only produces a 403 they cannot act on.
+                        canDelete && (
+                          <button onClick={() => setDeleteConfirm(r.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                            <Trash2 size={16} />
+                          </button>
+                        )
                       )}
                     </div>
                   </td>
@@ -473,7 +515,9 @@ export const Dashboard = ({ lang, t, refreshTrigger, onEditReport }: { lang: Lan
           </table>
         </div>
       </div>
-      
+      </>
+      )}
+
       {/* Hidden Template for PDF Export */}
       <div id="capex-template" className="hidden">
         {selectedReport && (

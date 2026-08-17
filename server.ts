@@ -24,6 +24,14 @@ import {
   resolveLanguage,
   VERDICTS,
 } from "./src/server/prompts/index.ts";
+import {
+  requireCaller,
+  optionalCaller,
+  canEditReport,
+  isAdmin,
+  AuthError,
+  type Caller,
+} from "./src/server/auth.ts";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -69,8 +77,67 @@ async function startServer() {
   });
   const upload = multer({ storage });
 
+  /* --------------------------- Authorization ---------------------------
+   * Every database call below runs through the service-role client, which
+   * bypasses RLS. These two wrappers are therefore the access control, not the
+   * RLS policies — RLS is enabled with no table policies so that the anon key
+   * published in the browser bundle cannot reach the tables at all.
+   *
+   * Roles: `admin` may edit and delete anything; `user` may create reports and
+   * edit their own; an unauthenticated caller reaches only the aggregate half of
+   * the dashboard. Roles are read from public.users on every request, so a role
+   * changed in the Supabase dashboard applies to the next call.
+   * -------------------------------------------------------------------- */
+
+  const denyAuth = (res: any, err: unknown) => {
+    if (err instanceof AuthError) return res.status(err.status).json({ error: err.message });
+    console.error("Auth error:", err);
+    return res.status(500).json({ error: "Could not verify your session." });
+  };
+
+  /** Wrap a handler so it only runs for a signed-in caller. */
+  const authed = (
+    handler: (req: any, res: any, caller: Caller) => Promise<unknown>,
+  ) => async (req: any, res: any) => {
+    let caller: Caller;
+    try {
+      caller = await requireCaller(supabase, req.headers?.authorization);
+    } catch (err) {
+      return denyAuth(res, err);
+    }
+    return handler(req, res, caller);
+  };
+
+  /** As `authed`, and refuses anyone who is not an admin. */
+  const adminOnly = (
+    handler: (req: any, res: any, caller: Caller) => Promise<unknown>,
+  ) => authed(async (req, res, caller) => {
+    if (!isAdmin(caller)) {
+      return res.status(403).json({ error: "Only an administrator can do that." });
+    }
+    return handler(req, res, caller);
+  });
+
+  /** Look up the owner of a report so ownership can be checked before writing. */
+  const reportOwner = async (id: string): Promise<number | null | undefined> => {
+    const { data } = await supabase!.from("roi_reports").select("user_id").eq("id", id).maybeSingle();
+    return data ? data.user_id : undefined;
+  };
+
+  /**
+   * Who the caller is, according to the database.
+   *
+   * The browser deliberately does not read the role out of the JWT: roles are
+   * assigned by editing public.users, and a token minted before that edit still
+   * carries the old claim. Asking the server means a promotion takes effect on
+   * the next sign-in rather than whenever the token happens to expire.
+   */
+  app.get("/api/whoami", authed(async (_req, res, caller) => {
+    return res.json({ id: caller.id, email: caller.email, role: caller.role });
+  }));
+
   // API Routes
-  app.post("/api/upload", upload.array("images", 3), async (req: any, res) => {
+  app.post("/api/upload", upload.array("images", 3), authed(async (req: any, res) => {
     try {
       const files = req.files as any[];
       if (!files || files.length === 0) return res.status(400).json({ error: "No files uploaded" });
@@ -91,9 +158,9 @@ async function startServer() {
       console.error("Upload Error:", err);
       res.status(500).json({ error: err.message });
     }
-  });
+  }));
 
-  app.get("/api/reports", async (req, res) => {
+  app.get("/api/reports", authed(async (req, res) => {
     try {
       if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
       const { data: reports, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
@@ -103,9 +170,9 @@ async function startServer() {
       console.error("Reports Fetch Error:", err.message || err);
       res.json([]);
     }
-  });
+  }));
 
-  app.post("/api/reports", async (req, res) => {
+  app.post("/api/reports", authed(async (req, res) => {
     try {
       const { project_name, current_params, new_params, results, ai_evaluation, image_url } = req.body;
       
@@ -131,9 +198,9 @@ async function startServer() {
     } catch (err) {
       res.status(500).json({ error: "Failed to save report" });
     }
-  });
+  }));
 
-  app.get("/api/roi-reports", async (req, res) => {
+  app.get("/api/roi-reports", authed(async (req, res) => {
     try {
       const { search } = req.query;
       
@@ -150,34 +217,22 @@ async function startServer() {
       console.error("ROI Reports Error:", err.message || err);
       res.json([]);
     }
-  });
+  }));
 
-  app.post("/api/roi-reports", async (req, res) => {
+  app.post("/api/roi-reports", authed(async (req, res, caller) => {
     try {
-      const { 
-        project_id, machine_name, shoe_model, vendor, investment_cost, 
-        labor_saving_cost, energy_saving_cost, other_savings, 
-        annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
-        ai_verdict, ai_evaluation, status, tags, image_url, form_data 
+      const {
+        project_id, machine_name, shoe_model, vendor, investment_cost,
+        labor_saving_cost, energy_saving_cost, other_savings,
+        annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
+        ai_verdict, ai_evaluation, status, tags, image_url, form_data
       } = req.body;
 
       if (supabase) {
-        // 1. Create or Find User
-        let user_id = null;
-        const { data: user } = await supabase.from('users').select('id').limit(1).maybeSingle();
-        
-        if (user) {
-            user_id = user.id;
-        } else {
-            const { data: newUser } = await supabase.from('users').insert({
-                name: 'System Operator', 
-                email: 'operator@laiyih.com', 
-                role: 'Operator'
-            }).select('id').single();
-            user_id = newUser?.id || null;
-        }
+        // Ownership comes from the verified session, never the request body —
+        // this used to attach every report to whichever user row came back first.
+        const user_id = caller.id;
 
-        // 2. Insert into roi_reports
         const { data, error } = await supabase
           .from("roi_reports")
           .insert({
@@ -208,19 +263,25 @@ async function startServer() {
       console.error(err);
       res.status(500).json({ error: "Failed to save ROI report", details: err.message });
     }
-  });
+  }));
 
-  app.patch("/api/roi-reports/:id", async (req, res) => {
+  app.patch("/api/roi-reports/:id", authed(async (req, res, caller) => {
     try {
       const { id } = req.params;
-      const { 
-        project_id, machine_name, shoe_model, vendor, investment_cost, 
-        labor_saving_cost, energy_saving_cost, other_savings, 
-        annual_savings, annual_output, fob_impact, roi_months, roi_percentage, 
-        ai_verdict, ai_evaluation, status, tags, image_url, form_data 
+      const {
+        project_id, machine_name, shoe_model, vendor, investment_cost,
+        labor_saving_cost, energy_saving_cost, other_savings,
+        annual_savings, annual_output, fob_impact, roi_months, roi_percentage,
+        ai_verdict, ai_evaluation, status, tags, image_url, form_data
       } = req.body;
 
       if (supabase) {
+        const owner = await reportOwner(id);
+        if (owner === undefined) return res.status(404).json({ error: "Report not found" });
+        if (!canEditReport(caller, owner)) {
+          return res.status(403).json({ error: "You can only edit reports you created." });
+        }
+
         const { error } = await supabase
           .from("roi_reports")
           .update({
@@ -252,16 +313,22 @@ async function startServer() {
       console.error(err);
       res.status(500).json({ error: "Failed to update ROI report", details: err.message });
     }
-  });
+  }));
 
-  app.patch("/api/roi-reports/:id/status", async (req, res) => {
+  app.patch("/api/roi-reports/:id/status", authed(async (req, res, caller) => {
     try {
       const { id } = req.params;
-      const { status, changed_by, comment } = req.body;
+      // `changed_by` is deliberately not read from the body: an approval trail
+      // that the client can sign on someone else's behalf records nothing.
+      const { status, comment } = req.body;
       if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
-      
-      const { data: report, error: fetchErr } = await supabase.from('roi_reports').select('status').eq('id', id).single();
+
+      const { data: report, error: fetchErr } = await supabase
+        .from('roi_reports').select('status, user_id').eq('id', id).single();
       if (fetchErr || !report) return res.status(404).json({ error: "Report not found" });
+      if (!canEditReport(caller, report.user_id)) {
+        return res.status(403).json({ error: "You can only change the status of reports you created." });
+      }
 
       const { error: updateErr } = await supabase.from('roi_reports').update({ status }).eq('id', id);
       if (updateErr) throw updateErr;
@@ -270,7 +337,7 @@ async function startServer() {
         report_id: id,
         status_from: report.status,
         status_to: status,
-        changed_by,
+        changed_by: caller.id,
         comment
       });
       if (historyErr) throw historyErr;
@@ -279,9 +346,9 @@ async function startServer() {
     } catch (err) {
       res.status(500).json({ error: "Failed to update status" });
     }
-  });
+  }));
 
-  app.get("/api/report-history", async (req, res) => {
+  app.get("/api/report-history", authed(async (req, res) => {
     try {
       if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
       const { data, error } = await supabase
@@ -296,13 +363,22 @@ async function startServer() {
       console.error("History Error:", err.message || err);
       res.json([]);
     }
-  });
+  }));
 
-  app.get("/api/dashboard/analytics", async (req, res) => {
+  /**
+   * The one endpoint that answers an unauthenticated caller.
+   *
+   * `topStats` and `statusDistribution` are true aggregates and are public. The
+   * other three are not: `investmentVsSaving`, `roiDistribution` and
+   * `vendorInvestment` are per-project and named, carrying machine names,
+   * vendors and each project's investment and payback. Those are only returned
+   * to a signed-in caller, so the public dashboard shows totals and nothing
+   * attributable.
+   */
+  app.get("/api/dashboard/analytics", async (req: any, res) => {
     try {
-      // Check Supabase config on Production
-      const hasSupabaseEnv = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY;
-      
+      const caller = await optionalCaller(supabase, req.headers?.authorization);
+
       const defaultResponse = {
         topStats: {
           totalInvestment: 0,
@@ -316,7 +392,12 @@ async function startServer() {
         roiDistribution: []
       };
 
-      if (supabase && hasSupabaseEnv) {
+      // This used to gate on SUPABASE_URL && SUPABASE_ANON_KEY, neither of which
+      // is what the client above is built from — with the documented environment
+      // (VITE_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) the guard was false and
+      // the dashboard reported zeros against a perfectly healthy database. The
+      // client being non-null is the only precondition that means anything.
+      if (supabase) {
         try {
           const { data: reports, error } = await supabase.from('roi_reports').select('*');
           
@@ -385,7 +466,7 @@ async function startServer() {
           if (roiCount > 0) avgROI = roiSum / roiCount;
           if (fobCount > 0) avgFobImpact = fobSum / fobCount;
 
-          return res.json({
+          const aggregates = {
             topStats: {
               totalInvestment,
               avgROI,
@@ -396,9 +477,28 @@ async function startServer() {
               activeProjects: activeCount
             },
             statusDistribution: Object.entries(distribution).map(([name, value]) => ({ name, value })),
+          };
+
+          // Withheld rather than emptied for a reason: the client uses the
+          // presence of these series to decide whether to render the
+          // attributable charts at all, so an anonymous caller gets no
+          // half-drawn panels asking why they are blank.
+          if (!caller) {
+            return res.json({
+              ...aggregates,
+              investmentVsSaving: [],
+              vendorInvestment: [],
+              roiDistribution: [],
+              scope: 'public' as const,
+            });
+          }
+
+          return res.json({
+            ...aggregates,
             investmentVsSaving,
             vendorInvestment: Object.entries(vendors).map(([name, value]) => ({ name, value })),
-            roiDistribution
+            roiDistribution,
+            scope: 'authenticated' as const,
           });
         } catch (innerErr) {
           console.error("Dashboard calculation error:", innerErr);
@@ -421,11 +521,11 @@ async function startServer() {
   });
 
 
-  app.delete("/api/roi-reports/:id", async (req, res) => {
+  app.delete("/api/roi-reports/:id", adminOnly(async (req, res) => {
     try {
       const { id } = req.params;
       if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
-      
+
       await supabase.from('report_history').delete().eq('report_id', id);
       await supabase.from('report_embeddings').delete().eq('report_id', id);
       const { error } = await supabase.from('roi_reports').delete().eq('id', id);
@@ -435,7 +535,7 @@ async function startServer() {
     } catch (err) {
       res.status(500).json({ error: "Failed to delete report" });
     }
-  });
+  }));
 
   /* ----------------------------- AI routes -----------------------------
    * All three share src/server/ai.ts for bounded calls, schema validation and
@@ -454,7 +554,7 @@ async function startServer() {
     return res.status(502).json({ error: "The AI service is unavailable. Please try again." });
   };
 
-  app.post("/api/evaluate", async (req, res) => {
+  app.post("/api/evaluate", authed(async (req, res) => {
     try {
       const { prompt, targetLanguage } = req.body ?? {};
       if (typeof prompt !== "string" || prompt.trim() === "") {
@@ -480,9 +580,9 @@ async function startServer() {
     } catch (err) {
       sendAIError(res, err, "Evaluate");
     }
-  });
+  }));
 
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", authed(async (req, res) => {
     try {
       const { messages, contextData, targetLanguage } = req.body ?? {};
       const lang = resolveLanguage(targetLanguage);
@@ -525,9 +625,9 @@ async function startServer() {
     } catch (err) {
       sendAIError(res, err, "Chat");
     }
-  });
+  }));
 
-  app.post("/api/infographic", async (req, res) => {
+  app.post("/api/infographic", authed(async (req, res) => {
     try {
       const { params, results, targetLanguage } = req.body ?? {};
       const lang = resolveLanguage(targetLanguage);
@@ -555,7 +655,7 @@ async function startServer() {
     } catch (err) {
       sendAIError(res, err, "Infographic");
     }
-  });
+  }));
 
   if (!process.env.NETLIFY) {
     if (process.env.NODE_ENV !== "production") {

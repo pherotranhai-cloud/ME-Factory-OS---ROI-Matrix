@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FilePlus, Cpu, Languages, History, MessageSquare, Calculator } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Cpu, Languages, History, MessageSquare, Calculator, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { type Language } from '../../types';
@@ -21,7 +21,10 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }: any) => (
   </button>
 );
 
-export const Sidebar = ({ activeTab, setActiveTab, lang, setLang, resetForm, t }: any) => {
+export const Sidebar = ({
+  activeTab, setActiveTab, lang, setLang, resetForm, t,
+  isSignedIn, isAdmin, email, onSignIn, onSignOut,
+}: any) => {
   return (
     <aside className="w-64 glass-card border-r border-white/40 flex flex-col z-10 m-4 rounded-3xl overflow-hidden shadow-[4px_0_24px_rgba(0,109,119,0.05)]">
       <div className="p-6 border-b border-ims-primary/10 bg-white/30 backdrop-blur-md">
@@ -34,26 +37,53 @@ export const Sidebar = ({ activeTab, setActiveTab, lang, setLang, resetForm, t }
 
       <nav className="flex-1 py-6 space-y-1">
         <SidebarItem icon={LayoutDashboard} label={t.dashboard} active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-        <SidebarItem
-          icon={Calculator}
-          label={t.analysis || 'Analysis'}
-          active={activeTab === 'analysis'}
-          onClick={() => setActiveTab('analysis')}
-        />
-        <SidebarItem 
-          icon={FilePlus} 
-          label={t.newRoi} 
-          active={activeTab === 'roi'} 
-          onClick={() => {
-            setActiveTab('roi');
-            resetForm();
-          }} 
-        />
-        <SidebarItem icon={History} label={t.history} active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
-        <SidebarItem icon={MessageSquare} label={t.aiAssistant} active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} />
+        {isSignedIn && <>
+          <SidebarItem
+            icon={Calculator}
+            label={t.analysis || 'Analysis'}
+            active={activeTab === 'analysis'}
+            onClick={() => setActiveTab('analysis')}
+          />
+          <SidebarItem
+            icon={FilePlus}
+            label={t.newRoi}
+            active={activeTab === 'roi'}
+            onClick={() => {
+              setActiveTab('roi');
+              resetForm();
+            }}
+          />
+          <SidebarItem icon={History} label={t.history} active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
+          <SidebarItem icon={MessageSquare} label={t.aiAssistant} active={activeTab === 'ai'} onClick={() => setActiveTab('ai')} />
+        </>}
+        {!isSignedIn && (
+          <SidebarItem icon={LogIn} label="Sign in" active={false} onClick={onSignIn} />
+        )}
       </nav>
 
       <div className="p-5 border-t border-ims-primary/10 bg-white/20 backdrop-blur-md">
+        {isSignedIn ? (
+          <div className="mb-3 rounded-xl border border-[#006D77]/15 bg-white/50 px-3 py-2.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              {isAdmin && <ShieldCheck size={12} className="text-[#006D77] shrink-0" />}
+              <span className="text-[9px] font-black uppercase tracking-[0.14em] text-[#006D77]">
+                {isAdmin ? 'Administrator' : 'Signed in'}
+              </span>
+            </div>
+            <div className="truncate text-[11px] font-bold text-[#4A6B6F]" title={email || ''}>{email}</div>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-[#4A6B6F] hover:text-[#006D77]"
+            >
+              <LogOut size={12} /> Sign out
+            </button>
+          </div>
+        ) : (
+          <p className="mb-3 text-[10px] leading-snug text-[#4A6B6F]/80">
+            Viewing public totals. Sign in to open reports and enter data.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2 mb-3">
           {(['EN', 'VI', 'ZH-CN', 'ZH-TW', 'ID', 'MY'] as Language[]).map(l => (
             <button
